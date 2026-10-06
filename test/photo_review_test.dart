@@ -1,10 +1,24 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:consumo_interno/features/products/data/photo_service.dart';
 
 void main() {
+  test('WebP estático com zero quadros de animação é aceito', () {
+    final bytes = base64Decode(
+      File('test/fixtures/static_product.webp.b64').readAsStringSync().trim(),
+    );
+    final info = img.WebPDecoder().startDecode(bytes)!;
+    expect(info.hasAnimation, isFalse);
+    expect(info.numFrames, 0);
+    final photo = img.decodeJpg(base64Decode(optimizePhoto(bytes)))!;
+    expect(photo.width, 194);
+    expect(photo.height, 259);
+  });
+
   test('Foto pequena preserva proporção sem ampliação artificial', () {
     final input = img.encodePng(img.Image(width: 2, height: 3));
     final photo = img.decodeJpg(base64Decode(optimizePhoto(input)))!;

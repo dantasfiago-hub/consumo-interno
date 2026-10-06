@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/access/sectors.dart';
 import '../../../app/app_state.dart';
 import '../../../domain/models.dart';
@@ -147,9 +148,9 @@ class _ProductsPageState extends State<ProductsPage> {
                                         child: Text(
                                           p.code,
                                           style: TextStyle(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
                                           ),
                                         ),
                                       ),
@@ -170,9 +171,9 @@ class _ProductsPageState extends State<ProductsPage> {
                                     Text(
                                       'Inativo',
                                       style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.error,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .error,
                                       ),
                                     ),
                                 ],
@@ -257,7 +258,10 @@ class _ProductEditorState extends State<ProductEditor> {
                               try {
                                 final result = await choosePhoto();
                                 if (mounted && result != null) {
-                                  setState(() => photo = result);
+                                  setState(() {
+                                    photo = result;
+                                    error = '';
+                                  });
                                 }
                               } catch (e) {
                                 if (mounted) {
