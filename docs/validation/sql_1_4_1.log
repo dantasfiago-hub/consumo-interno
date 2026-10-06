@@ -1,0 +1,9 @@
+
+> test
+> node test.mjs && node sector_test.mjs && node operations_v4_test.mjs && node upgrade_v4_test.mjs && node review_v5_test.mjs
+
+PASS: operações/RLS legadas e exportação v2: agrupamento, precisão, SHA-256, reservas exclusivas, perfis, eventos idempotentes, estados e preservação de histórico
+PASS: três setores, produto compartilhado/sem acesso, isolamento SQL, cancelamento do próprio setor, bloqueio após exportação, arquivos separados e exclusão automática de exportados
+PASS: auditoria, último administrador, contas por setor, revisão remota sem sobrescrever exportados, aplicação controlada, imagens separadas com hash/RLS, backups por conta/setor e retenção de 7 cópias
+PASS: atualização de loja existente preserva fotos, versões e idempotência; auditoria retroativa; duas requisições de exportação não reservam o mesmo item
+PASS: reenvio estável de fotos inline/v4, separação atômica, rejeição de adulteração, versão nova preservada, código interno validado, validador privado e limite exato de backup e data histórica de auditoria

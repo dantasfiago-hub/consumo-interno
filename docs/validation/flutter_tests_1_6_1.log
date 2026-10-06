@@ -1,0 +1,280 @@
+00:00 +0: loading /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/cloud_test.dart
+00:00 +0: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/cloud_test.dart: Revogação confirmada invalida a permissão local em vez de manter acesso offline
+00:00 +1: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/cloud_test.dart: Reenvio usa o mesmo ID quando o servidor grava mas a resposta se perde
+00:00 +2: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/cloud_test.dart: Lote por setor repete UUID após resposta perdida e inclui perfil versionado
+00:00 +3: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/cloud_test.dart: Confirmação de salvamento fica pendente e repete o mesmo evento
+00:00 +4: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/photo_review_test.dart: Foto pequena preserva proporção sem ampliação artificial
+00:00 +5: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/photo_review_test.dart: Arquivo inválido ou com pixels excessivos é recusado antes de decodificar
+00:00 +6: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Controladores não notificam depois de descarte durante leitura
+00:00 +7: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Tema restaurado pode atualizar a preferência já carregada
+00:00 +8: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Falha após commit não informa erro de gravação nem convida a duplicar lançamento
+00:00 +9: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Falha após commit não informa erro de gravação nem convida a duplicar lançamento
+00:00 +10: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Falha após commit não informa erro de gravação nem convida a duplicar lançamento
+00:00 +11: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Falha após commit não informa erro de gravação nem convida a duplicar lançamento
+00:00 +12: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Fotos órfãs não aumentam o backup do catálogo atual
+00:00 +13: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Falha de reload não trava sincronização nem escapa do timer
+00:00 +14: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Erro da ação é preservado quando reload também falha
+00:01 +15: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Revogação explícita tem prioridade sobre binding histórico
+00:01 +16: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Backup sem binding é recusado por instalação vinculada
+00:01 +17: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Backup não concede privilégios em banco ainda não autenticado
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart:208:18)
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +18: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Backup após mudança de setor omite cache e outbox de outro setor
+00:01 +19: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Consumo rejeita código incompatível e cancelamento longo
+00:01 +20: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Objeto antigo não cancela consumo já protegido no banco local
+00:01 +21: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart: Restauração conserva instante de cancelamento
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/review_regression_test.dart:329:16)
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:01 +22: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/theme_test.dart: Preferência persiste sem gerar pendência de sincronização
+00:01 +23: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/theme_test.dart: Preferência persiste sem gerar pendência de sincronização
+00:01 +24: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/theme_test.dart: Preferência persiste sem gerar pendência de sincronização
+00:01 +25: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/theme_test.dart: Preferência persiste sem gerar pendência de sincronização
+00:01 +26: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/quantity_and_sector_export_test.dart: Botões de quantidade KG não produzem negativos e respeitam limites
+00:01 +27: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/quantity_and_sector_export_test.dart: Botões de quantidade KG não produzem negativos e respeitam limites
+00:02 +28: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/quantity_and_sector_export_test.dart: Botões de quantidade KG não produzem negativos e respeitam limites
+00:03 +29: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/quantity_and_sector_export_test.dart: Botões de quantidade KG não produzem negativos e respeitam limites
+00:03 +30: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/quantity_and_sector_export_test.dart: Botões de quantidade KG não produzem negativos e respeitam limites
+00:03 +31: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/theme_test.dart: Automático acompanha sistema; preferência explícita prevalece
+00:03 +32: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/theme_test.dart: Automático acompanha sistema; preferência explícita prevalece
+00:03 +33: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:04 +34: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:04 +34: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/multidevice14_test.dart: Dois dispositivos: exportação concorrente ao cancelamento offline, revisão e cache incremental
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/multidevice14_test.dart:59:20)
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:04 +35: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:05 +35: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/sector_access_test.dart: Backup respeita a conta atual e não substitui permissões verificadas
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/sector_access_test.dart:59:20)
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/sector_access_test.dart:60:21)
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:05 +36: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:05 +37: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:05 +38: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:05 +39: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+UI: selecionar produto
+UI: adicionar item
+00:06 +40: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+UI: salvar lançamento
+00:07 +41: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +42: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +43: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +44: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +45: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +46: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +47: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +48: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +49: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +50: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +51: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +52: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:07 +53: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +53: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Backup automático retém 14 cópias e restaura com verificação de integridade
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart:22:22)
+<asynchronous suspension>
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:08 +54: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +55: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +56: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +56: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/export_storage_test.dart: Backup conserva perfil, favoritos e confirmação offline pendente
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/export_storage_test.dart:104:21)
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:08 +57: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +58: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +59: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +60: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +61: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +61: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Fotos iguais usam um só registro e sobrevivem ao backup sem duplicar o catálogo
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart:94:19)
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:08 +62: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:08 +63: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:09 +64: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:09 +65: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:09 +66: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em light
+00:09 +67: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +68: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +69: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +70: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +70: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/database_test.dart: Backup restaura fotos, totais e IDs de operações sem duplicação
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/database_test.dart:80:21)
+<asynchronous suspension>
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:10 +71: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +72: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +72: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/database_test.dart: Arquivo SQLite mantém foto e pendência após reiniciar
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/database_test.dart:109:19)
+<asynchronous suspension>
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+WARNING (drift): It looks like you've created the database class LocalDatabase multiple times. When these two databases use the same QueryExecutor, race conditions will occur and might corrupt the database. 
+Try to follow the advice at https://drift.simonbinder.eu/faq/#using-the-database or, if you know what you're doing, set driftRuntimeOptions.dontWarnAboutMultipleDatabases = true
+Here is the stacktrace from when the database was opened a second time:
+#0      GeneratedDatabase._handleInstantiated (package:drift/src/runtime/api/db_base.dart:96:30)
+#1      GeneratedDatabase._whenConstructed (package:drift/src/runtime/api/db_base.dart:73:12)
+#2      new GeneratedDatabase (package:drift/src/runtime/api/db_base.dart:64:5)
+#3      new LocalDatabase (package:consumo_interno/infrastructure/local/database.dart)
+#4      main.<anonymous closure> (file:///workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/database_test.dart:121:20)
+<asynchronous suspension>
+#5      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
+<asynchronous suspension>
+#6      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)
+<asynchronous suspension>
+#7      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
+<asynchronous suspension>
+This warning will only appear on debug builds.
+00:10 +73: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +74: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +75: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +76: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +77: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +78: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +79: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +80: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +81: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:10 +82: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/architecture14_test.dart: Administração possui quatro áreas e layout correto em 390.0
+00:11 +82: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 390 pixels em light
+UI: selecionar produto
+00:11 +83: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 390 pixels em light
+UI: adicionar item
+UI: salvar lançamento
+00:12 +84: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 390 pixels em light
+00:12 +85: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 390 pixels em light
+00:13 +86: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 1280 pixels em dark
+UI: selecionar produto
+UI: adicionar item
+UI: salvar lançamento
+00:15 +87: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: Fluxo offline e layout em 390 pixels em dark
+UI: selecionar produto
+UI: adicionar item
+UI: salvar lançamento
+00:17 +88: /workspace/scratch/fa11839cdfcd/revisao/projeto/consumo_interno/test/ui_test.dart: (tearDownAll)
+00:17 +88: All tests passed!

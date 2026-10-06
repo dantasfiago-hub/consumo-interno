@@ -1,0 +1,26 @@
+.dart_tool/
+build/
+.flutter-plugins*
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+config.local.json
+node_modules/
+.idea/
+*.iml
+.gradle/
+android/.gradle/
+
+# Private production signing material
+android/key.properties
+android/signing/
+*.p12
+
+# Generated native build files and private material
+android/.cxx/
+android/app/.cxx/
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+*.hprof

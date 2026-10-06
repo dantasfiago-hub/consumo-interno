@@ -1,0 +1,13 @@
+{
+  "version": "1.6.1+9",
+  "flutter": "3.47.5",
+  "dart": "3.13.4",
+  "command": "flutter build apk --release --no-pub",
+  "exit_code": 0,
+  "apk_bytes": 69148607,
+  "apk_sha256": "3f0a2f30bb456c158baf670b607e835440bf8a0654f8f1e7923eac0ef797b303",
+  "signature_verification": "apksigner: verified v2, one signer",
+  "compileSdk": 36,
+  "targetSdk": 36,
+  "minSdk": 24
+}

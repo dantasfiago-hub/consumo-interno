@@ -1,0 +1,54 @@
+# Revisão de código — Consumo Interno 1.4.1+6
+
+Data: 4 de outubro de 2026. Base revisada: código-fonte 1.4.0+5. Resultado: correções no código-fonte 1.4.1+6 e migração incremental 005. Não foi gerado um APK nesta revisão.
+
+## Escopo e conclusão
+
+Foram examinados os módulos Dart, persistência SQLite/Drift, fila de sincronização, autenticação e permissões, fotos, backups, relatórios, exportação VR, migrações PostgreSQL, testes e configurações de compilação/distribuição. A revisão combinou leitura estática, reprodução de falhas e testes de regressão. Não constitui garantia de ausência de outros defeitos nem auditoria de vulnerabilidades das dependências.
+
+As principais falhas envolviam falsa indicação de falha após gravar um consumo, restauração com vínculo insuficiente, reenvio inconsistente de fotos e sincronização bloqueada após erro de atualização da tela. Esses problemas foram corrigidos e receberam cobertura de regressão.
+
+## Defeitos confirmados e corrigidos
+
+| Prioridade | Defeito e consequência | Correção e localização |
+|---|---|---|
+| Alta | Consumo era gravado, mas uma falha posterior de backup/atualização era apresentada como falha de gravação. Repetir o lançamento criava outro UUID e poderia duplicar o consumo. | `lib/app/app_state.dart`, `_afterLocalCommit`: confirma a gravação concluída e informa separadamente a falha posterior. O nome do operador passou a ser gravado na transação de `LocalDatabase._save`; a tela deixou de gravá-lo depois do consumo. |
+| Alta | Restauração em instalação vinculada aceitava backup sem vínculo. Em instalação vazia, permissões presentes no JSON podiam ser consideradas verificadas. Um marcador explícito de acesso revogado também podia ser ignorado pelo vínculo antigo. | `lib/infrastructure/local/database.dart`, `restore`: exige vínculo exato quando a instalação já está vinculada; dados de backup não concedem acesso em instalação não autenticada. `SessionController.load` respeita explicitamente `access_verified=0`. Backups antigos sem vínculo exigem avaliação e recuperação controlada, não restauração automática em conta vinculada. |
+| Alta | O corpo de um produto com foto era transformado durante o envio sem atualizar a operação durável. Após uma resposta perdida ou mudança de versão, o mesmo UUID podia apresentar outro hash e gerar conflito falso. | `CloudService.sync` reenvia o corpo durável. `supabase/migrations/005_review_fixes.sql` separa foto/metadados na mesma transação e admite os dois formatos históricos somente quando o hash completo coincide. Reenvio antigo não sobrescreve uma foto mais recente. O validador auxiliar não pode ser chamado por usuários autenticados. |
+| Alta | Código interno do item não era conferido com o produto atual. Um item antigo/adulterado podia exportar o código incorreto. Cancelamento baseado em objeto desatualizado podia ignorar uma proteção de exportação já conhecida pelo banco local. | `LocalDatabase.saveConsumption` e validador SQL 005 conferem código interno. `_save` verifica a proteção armazenada antes de cancelar. Reservas/exportações continuam protegidas também no servidor. |
+| Alta | Se a reconciliação de setor fosse interrompida, o backup podia incluir dados locais ainda não removidos do setor anterior. | `LocalDatabase._backupRecords`, `_backupPending`, `_backupArchives` e `_backupImages` filtram pelo papel/setor atual independentemente da limpeza de sincronização. Não removem silenciosamente operações pendentes. |
+| Média | Falha em `reload` deixava o controlador com `syncing=true`, bloqueando sincronizações futuras e podendo produzir exceção não tratada no timer. | `SynchronizationController._finish` registra o erro e libera o estado em `finally`; novas tentativas continuam possíveis. A exceção original de uma ação não é substituída pelo erro de recarregamento. |
+| Média | Foto enviada depois de seus metadados podia nunca aparecer: o cursor avançava, mas não havia nova revisão para provocar download. | `CloudService.sync` tenta novamente os hashes ausentes do catálogo local mesmo com cursor atualizado, em grupos limitados; dados baixados continuam sendo verificados por SHA-256. |
+| Média | A listagem administrativa de pendências/backups parava na primeira página de 100 registros. | `CloudService.adminList` busca as demais páginas com ordenação estável. Auditoria mantém sua paginação por cursor. Teste HTTP cobre 101 registros. |
+| Média | Decodificar/redimensionar fotos na interface podia congelar a tela; imagens pequenas eram ampliadas; entrada malformada podia lançar `RangeError`. | `PhotoService.choosePhoto` usa `compute`; `optimizePhoto` verifica dimensões antes de decodificar, aceita até 16 milhões de pixels/15 MiB de arquivo, reduz sem ampliar e converte falha de decodificação em erro de formato. Editor desabilita ações concorrentes durante o processamento. |
+| Média | Respostas assíncronas podiam alterar campos ou notificar controladores após fechar a tela. Tema restaurado permanecia em cache. | Proteções de `mounted` nas telas de conexão/configuração; proteção de descarte nos controladores de tema/exportação e `AppState`; recarga forçada do tema após restauração/conexão. |
+| Média | Data do cancelamento se perdia na restauração; justificativas acima de 300 caracteres eram aceitas localmente e recusadas na nuvem. Auditoria histórica recebia a data da migração 004 em vez da data de recebimento da operação. | Restauração preserva `cancelled_at`; cancelamento valida de 3 a 300 caracteres; 005 corrige apenas os eventos históricos correspondentes, usando `operations.received_at`. A data de recebimento não é a data comercial informada no lançamento. |
+| Média | Limites remotos de backup eram diferentes dos limites do cliente; fotos órfãs aumentavam consultas e cópias indefinidamente. Restauração automática considerava a instalação vazia apesar de lotes/recibos/fila existentes. | Cliente/SQL adotam exatamente 20 MiB comprimidos. Catálogo busca apenas imagens referenciadas; backup inclui referências atuais, arquivos de conflito autorizados e fila autorizada. Fotos órfãs são preservadas no banco, mas excluídas dessas consultas/cópias. Recuperação automática exige também lotes, recibos e fila vazios. |
+
+## Validação executada
+
+- Flutter 3.35.7 / Dart 3.9.2 em Linux: `flutter analyze --no-pub` sem ocorrências.
+- **76 testes Flutter aprovados**, incluindo 17 novos testes. Cobertura adicional: falha após gravação sem duplicação, falha de recarga/repetição, restauração e vínculo, revogação explícita, proteção de consumo exportado, código interno, justificativa, data do cancelamento, escopo de backup, foto ausente, paginação, descarte de controladores, limites/processamento de imagem e exclusão de imagens órfãs do backup.
+- **Cinco suítes PostgreSQL/PGlite aprovadas** com `npm test`: legado/exportação v2, setores v3, administração/mídia/backups, atualização de loja preenchida e regressões 005. Testes verificam reenvio dos formatos anteriores, atomicidade de mídia, rejeição de adulteração, manutenção de versão nova, permissões do validador, código interno, limite de backup e data histórica.
+- Testes existentes continuam verificando quantidade em milésimos, dinheiro em centavos, preço agregado com até quatro casas, unidade de exportação `1`, proteção contra reexportação, isolamento por setor e layouts claro/escuro.
+- Evidências em `docs/validation/`. O manifesto `docs/ARQUIVOS_SHA256.json` verifica os arquivos distribuídos, excluindo o próprio manifesto.
+
+## Melhorias de engenharia ainda recomendadas
+
+Estes pontos permanecem como trabalho futuro; não estão apresentados como funcionalidades implementadas:
+
+1. **Recuperação de inicialização.** Banco corrompido ou preferências JSON inválidas ainda podem impedir `AppState.load`/inicialização. Adicionar tela de diagnóstico, leitura defensiva e opção de recuperação que preserve o banco original. Não apagar automaticamente dados financeiros para contornar um erro.
+2. **Tipagem e separação de responsabilidades.** Persistência/REST ainda trocam muitos `Map<String, dynamic>`. Criar DTOs e contratos de repositório com validação explícita, dividir `CloudService` por sessão/sincronização/mídia/backup e reduzir o acesso direto a armazenamento em `AppState`. Isso torna alterações de esquema mais seguras; não exige reescrever tudo de uma vez.
+3. **Volume e concorrência.** Histórico, relatórios e algumas leituras de lotes carregam conjuntos completos. Adotar paginação e consultas agregadas no SQLite, sincronização incremental de lotes e orçamento de memória. A paginação por offset corrigida na administração pode mudar durante alterações concorrentes; cursor consistente é uma evolução recomendada.
+4. **Política de limpeza de fotos.** Fotos órfãs deixam de inflar backups, mas ainda ocupam disco. Implementar coleta transacional após verificar referências de catálogo, fila e arquivos de conflito; nunca apagar uma foto necessária a uma operação offline.
+5. **Proteção dos backups.** JSON e compressão não oferecem criptografia; SHA-256 detecta corrupção, mas não autentica o autor. Para distribuição externa de backups, avaliar criptografia com gestão/recuperação de chaves. O kit privado de assinatura deve continuar separado do código.
+6. **Auditoria de todas as decisões.** Revisão central gera eventos; caminhos de resolução local também devem ter eventos explícitos e correlacionados, além de arquivar os dados originais. Definir quais ações administrativas exigem justificativa e retenção.
+7. **Entrega contínua.** Executar e acompanhar o workflow CI já incluído, com testes Flutter/SQL, builds Android/Windows e teste de atualização de banco preenchido. Homologar o arquivo com o layout efetivo do VR Master e testar restauração entre dispositivos reais.
+
+## Aplicação e limites
+
+Código entregue: **1.4.1+6**. Loja com banco 1.4: aplicar somente `supabase/migrations/005_review_fixes.sql`, depois de backup. Versões anteriores precisam primeiro das migrações anteriores, em ordem. Banco novo: esquema base, 002, 003, 004 e 005. Nunca reaplicar o esquema base em loja existente. Esta revisão não executou migrações no Supabase da loja.
+
+Depois, recompilar Android/Windows. Atualização Android deve usar a mesma chave release e código de versão 6. O APK 1.4.0+5 entregue anteriormente **não contém estas correções**. O guia foi atualizado; a documentação da validação do binário anterior permanece em `docs/VALIDACAO_1_4.md`.
+
+Não houve execução nativa Windows, Android físico, Supabase real nem importação no VR Master nesta revisão. HTTP controlado e PGlite validam regras e cenários, mas não substituem homologação de rede/conexões concorrentes reais. Um aparelho offline não conhece revogação/exportação ocorrida em outro aparelho até sincronizar; o servidor rejeita ações incompatíveis. Exportações feitas fora deste aplicativo não são conhecidas automaticamente.

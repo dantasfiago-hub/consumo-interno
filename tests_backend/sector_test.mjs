@@ -1,0 +1,85 @@
+import {PGlite} from '@electric-sql/pglite';
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+const db=new PGlite();
+await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;`);
+for(const file of ['schema.sql','migrations/002_exports_v2.sql','migrations/003_sector_access.sql']) await db.exec(fs.readFileSync(new URL('../supabase/'+file,import.meta.url),'utf8'));
+const store=randomUUID(),admin=randomUUID(),device=randomUUID();
+const users={hortifruti:randomUUID(),cozinha:randomUUID(),padaria:randomUUID()};
+const secondKitchen=randomUUID(),unassigned=randomUUID();
+await db.exec(`insert into auth.users values('${admin}'),('${secondKitchen}'),('${unassigned}'),${Object.values(users).map(id=>`('${id}')`).join(',')}; insert into stores values('${store}','Loja'); insert into memberships values('${store}','${admin}','admin',null),('${store}','${secondKitchen}','operator','cozinha'),('${store}','${unassigned}','operator',null),${Object.entries(users).map(([s,id])=>`('${store}','${id}','operator','${s}')`).join(',')}; set role authenticated; set request.jwt.claim.sub='${admin}';`);
+const login=async user=>db.exec(`set request.jwt.claim.sub='${user}'`);
+const apply=(kind,version,body,id=randomUUID())=>db.query('select apply_operation($1,$2,$3,$4,$5,$6::jsonb)',[store,id,device,kind,version,JSON.stringify(body)]);
+const products={}; const consumed={};
+for(const sector of Object.keys(users)) {
+ products[sector]={id:randomUUID(),code:{hortifruti:'0001',cozinha:'0002',padaria:'0003'}[sector],description:sector,unit:'UN',active:true,photo:null,version:1,sectors:[sector]};
+ await apply('product',0,products[sector]);
+}
+const shared={...products.cozinha,id:randomUUID(),code:'0004',sectors:['cozinha','padaria']};await apply('product',0,shared);
+const hidden={...shared,id:randomUUID(),code:'0005',sectors:[]};await apply('product',0,hidden);
+function consumption(sector,p=products[sector]) {return {id:randomUUID(),date:'2026-10-04',created_at:'2026-10-04T12:00:00Z',operator:'Pessoa',sector,note:'',status:'confirmed',version:1,cancellation_reason:null,items:[{id:randomUUID(),product_id:p.id,code:p.code,description:p.description,unit:p.unit,amount:3000,total_cents:200}]};}
+for (const [sector,user] of Object.entries(users)) {
+ await login(user);
+ const visible=(await db.query("select code from entities where kind='product' order by code")).rows.map(x=>x.code);
+ assert.deepEqual(visible,sector==='hortifruti'?['0001']:sector==='cozinha'?['0002','0004']:['0003','0004']);
+ await assert.rejects(()=>apply('product',0,{...products[sector],id:randomUUID(),code:'BAD'}));
+ const c=consumption(sector);await apply('consumption',0,c); consumed[sector]=c;
+ const other=sector==='cozinha'?'padaria':'cozinha';
+ await assert.rejects(()=>apply('consumption',0,consumption(other)));
+ await assert.rejects(()=>apply('consumption',0,consumption(sector,products[other])));
+ assert.equal((await db.query("select count(*)::int as n from entities where kind='consumption'")).rows[0].n,1);
+ assert.equal((await db.query('select count(*)::int as n from export_batches')).rows[0].n,0);
+}
+await login(users.cozinha);
+await assert.rejects(()=>apply('consumption',1,{...consumed.padaria,status:'cancelled',version:2,cancellation_reason:'Erro'}));
+await login(secondKitchen);
+await apply('consumption',1,{...consumed.cozinha,status:'cancelled',version:2,cancellation_reason:'Erro do setor'});
+await login(unassigned);assert.equal((await db.query('select count(*)::int as n from entities')).rows[0].n,0);
+await assert.rejects(()=>apply('consumption',0,consumption('cozinha')));
+await login(admin);
+const profile={version:1,separator:';',decimal:',',encoding:'UTF8',line_ending:'CRLF',header:false,bom:false,fixed_price:false,validated:true,order:['code','quantity','unit','unit_price']};
+const select=c=>({consumption_id:c.id,item_id:c.items[0].id,version:c.version});
+const batch=(id,items,sector)=>db.query('select create_export_batch_v3($1,$2,$3::jsonb,$4::jsonb,$5::jsonb,$6) as body',[store,id,JSON.stringify(items),JSON.stringify(profile),JSON.stringify({sector}),sector]);
+const change=(id,v,action)=>db.query('select update_export_batch_v2($1,$2,$3,$4,$5,$6) as body',[store,id,v,action,action==='cancelled'?'Erro no lote':'',randomUUID()]);
+await assert.rejects(()=>batch(randomUUID(),[select(consumed.hortifruti),select(consumed.padaria)],'padaria'));
+const id=randomUUID();const prepared=(await batch(id,[select(consumed.padaria)],'padaria')).rows[0].body;
+assert.equal(prepared.sector,'padaria');assert.match(prepared.artifact.name,/^consumo_padaria_/);
+assert.equal((await batch(id,[select(consumed.padaria)],'padaria')).rows[0].body.id,id);
+await login(users.padaria);
+assert.equal((await db.query('select export_locked from entities where id=$1',[consumed.padaria.id])).rows[0].export_locked,true);
+await assert.rejects(()=>apply('consumption',1,{...consumed.padaria,status:'cancelled',version:2,cancellation_reason:'Não cancelar exportado'}));
+await assert.rejects(()=>batch(randomUUID(),[select(consumed.padaria)],'padaria'));
+await login(admin);
+const ready=(await change(id,1,'authorize_save')).rows[0].body;
+await change(id,ready.version,'saved');
+const fresh=consumption('padaria');await apply('consumption',0,fresh);
+const next=(await batch(randomUUID(),[select(consumed.padaria),select(fresh)],'padaria')).rows[0].body;
+assert.equal(next.skipped_count,1);assert.equal(next.rows.length,1);assert.equal(next.rows[0].consumption.id,fresh.id);
+await assert.rejects(()=>batch(randomUUID(),[select(consumed.padaria)],'padaria'));
+await change(next.id,1,'cancelled');
+assert.equal((await db.query('select export_locked from entities where id=$1',[fresh.id])).rows[0].export_locked,false);
+await login(users.padaria);
+await apply('consumption',1,{...fresh,status:'cancelled',version:2,cancellation_reason:'Reserva desfeita'});
+// Historic free-text sector is classified without changing its original body.
+await login(admin);
+const legacy={...consumption('cozinha'),sector:'Depósito antigo'};
+await db.exec('reset role');
+await db.query("insert into entities(store_id,kind,id,code,version,body,created_by) values($1,'consumption',$2,null,1,$3::jsonb,$4)",[store,legacy.id,JSON.stringify(legacy),admin]);
+await db.exec('set role authenticated');
+await login(users.cozinha);
+await assert.rejects(()=>db.query('select assign_legacy_sector($1,$2,$3,$4)',[store,legacy.id,'cozinha','Classificação antiga']));
+await login(admin);
+await db.query('select assign_legacy_sector($1,$2,$3,$4)',[store,legacy.id,'cozinha','Classificação antiga']);
+const classified=(await db.query('select body,sector_id from entities where id=$1',[legacy.id])).rows[0];
+assert.deepEqual(classified.body,legacy);assert.equal(classified.sector_id,'cozinha');
+await login(users.cozinha);
+await apply('consumption',1,{...legacy,status:'cancelled',version:2,cancellation_reason:'Erro no registro antigo'});
+// A product removed from a sector is no longer readable or usable by its users.
+await login(admin);
+await apply('product',1,{...shared,version:2,sectors:['padaria']});
+await login(users.cozinha);
+assert.equal((await db.query('select count(*)::int as n from entities where id=$1',[shared.id])).rows[0].n,0);
+await assert.rejects(()=>apply('consumption',0,consumption('cozinha',shared)));
+console.log('PASS: três setores, produto compartilhado/sem acesso, isolamento SQL, cancelamento do próprio setor, bloqueio após exportação, arquivos separados e exclusão automática de exportados');
+await db.close();
