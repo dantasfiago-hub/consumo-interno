@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "test": "node test.mjs && node sector_test.mjs && node operations_v4_test.mjs && node upgrade_v4_test.mjs && node review_v5_test.mjs && node sector_export_v6_test.mjs && node device_v7_test.mjs && node device_v8_test.mjs"
+    "test": "node test.mjs && node sector_test.mjs && node operations_v4_test.mjs && node upgrade_v4_test.mjs && node review_v5_test.mjs && node sector_export_v6_test.mjs && node device_v7_test.mjs && node device_v8_test.mjs && node device_v9_test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

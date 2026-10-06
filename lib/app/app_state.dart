@@ -1,7 +1,11 @@
 import 'dart:async';
+
 import 'package:crypto/crypto.dart';
+
 import '../core/access/admin_guard.dart';
+
 import 'dart:convert';
+
 import '../features/administration/application/administration_controller.dart';
 import 'controllers/session_controller.dart';
 import 'controllers/catalog_controller.dart';
@@ -9,7 +13,9 @@ import 'controllers/consumption_controller.dart';
 import 'controllers/synchronization_controller.dart';
 import '../features/backup/application/backup_controller.dart';
 import '../features/exports/application/export_controller.dart';
+
 import 'package:flutter/foundation.dart';
+
 import '../infrastructure/local/database.dart';
 import '../domain/models.dart';
 import '../infrastructure/cloud/cloud_service.dart';
@@ -45,7 +51,9 @@ class AppState extends ChangeNotifier {
   late final synchronization = SynchronizationController(
     synchronize: () async {
       try {
-        if (cloudConfigured) await cloud.sync();
+        if (cloudConfigured && await db.setting('device_setup_mode') != '1') {
+          await cloud.sync();
+        }
       } finally {
         if (session.accessReady) await backups.snapshot();
       }
@@ -113,6 +121,48 @@ class AppState extends ChangeNotifier {
       : Future.value();
   Future<T> _onlineAction<T>(Future<T> Function() action) =>
       synchronization.action(action);
+  bool _leaving = false;
+  final Set<Future<void>> _localWrites = {};
+  Future<void> _trackLocalWrite(Future<void> Function() action) {
+    if (_leaving) return Future.error(StateError('Aguarde a saída do setor.'));
+    late final Future<void> task;
+    task = action().whenComplete(() => _localWrites.remove(task));
+    _localWrites.add(task);
+    return task;
+  }
+
+  Future<void> leaveForSetup() async {
+    if (_leaving) throw StateError('A saída já está em andamento.');
+    _leaving = true;
+    try {
+      await _onlineAction(() async {
+        await Future.wait(_localWrites.toList());
+        final previous = await db.setting('access_verified');
+        await db.setSetting('access_verified', '0');
+        await session.load();
+        if (!_disposed) notifyListeners();
+        try {
+          await cloud.sync();
+          if ((await db.pending()).isNotEmpty ||
+              (await db.records('export_receipt')).isNotEmpty) {
+            throw StateError(
+              'Resolva as pendências antes de sair ou trocar de setor.',
+            );
+          }
+          await backups.snapshot(force: true, required: true);
+          await db.setSetting('device_setup_mode', '1');
+          await db.setSetting('access_verified', '0');
+          lockAdministration();
+        } catch (_) {
+          await db.setSetting('access_verified', previous ?? '0');
+          rethrow;
+        }
+      });
+    } finally {
+      _leaving = false;
+    }
+  }
+
   Future<void> activateDevice(
     String url,
     String key,
@@ -120,6 +170,14 @@ class AppState extends ChangeNotifier {
     String activationCode, {
     Future<String?> Function()? restoreBackup,
   }) => _onlineAction(() async {
+    final changing = await db.setting('device_setup_mode') == '1';
+    if (changing) {
+      if ((await db.pending()).isNotEmpty ||
+          (await db.records('export_receipt')).isNotEmpty) {
+        throw StateError('Resolva as pendências antes de ativar outro setor.');
+      }
+      await backups.snapshot(force: true, required: true);
+    }
     await cloud.configure(url, key, store);
     await cloud.activateDevice(activationCode);
     if (cloud.role == 'admin') {
@@ -143,6 +201,8 @@ class AppState extends ChangeNotifier {
     }
     if (restoreBackup == null) await cloud.restoreOwnCloudBackup();
     await cloud.sync();
+    await db.removeSetting('device_setup_mode');
+    await db.setSetting('access_verified', '1');
     await appearance.load(force: true);
     await backups.snapshot(force: true);
   });
@@ -199,16 +259,17 @@ class AppState extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  Future<void> saveProduct(Product p, {int expectedVersion = 0}) async {
-    if (!canManage) throw StateError('Desbloqueie a administração.');
-    await catalog.save(p, expectedVersion: expectedVersion);
-    await _afterLocalCommit(() async {
-      await backups.snapshot(force: true);
-      await load();
-    });
-  }
+  Future<void> saveProduct(Product p, {int expectedVersion = 0}) =>
+      _trackLocalWrite(() async {
+        if (!canManage) throw StateError('Desbloqueie a administração.');
+        await catalog.save(p, expectedVersion: expectedVersion);
+        await _afterLocalCommit(() async {
+          await backups.snapshot(force: true);
+          await load();
+        });
+      });
 
-  Future<void> saveConsumption(Consumption c) async {
+  Future<void> saveConsumption(Consumption c) => _trackLocalWrite(() async {
     if (!accessReady) throw StateError('Acesso bloqueado.');
     await consumption.save(c, products);
     await _afterLocalCommit(() async {
@@ -220,16 +281,17 @@ class AppState extends ChangeNotifier {
       await backups.snapshot(force: true);
       await load();
     });
-  }
+  });
 
-  Future<void> cancel(Consumption c, String reason) async {
-    if (!accessReady) throw StateError('Acesso bloqueado.');
-    await consumption.cancel(c, reason, batches);
-    await _afterLocalCommit(() async {
-      await backups.snapshot(force: true);
-      await load();
-    });
-  }
+  Future<void> cancel(Consumption c, String reason) =>
+      _trackLocalWrite(() async {
+        if (!accessReady) throw StateError('Acesso bloqueado.');
+        await consumption.cancel(c, reason, batches);
+        await _afterLocalCommit(() async {
+          await backups.snapshot(force: true);
+          await load();
+        });
+      });
 
   Future<void> _afterLocalCommit(Future<void> Function() refresh) async {
     // A committed record must never be reported as a failed save: retrying the

@@ -383,7 +383,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               const SizedBox(height: 16),
               Text(
-                'Versão 1.6.1 · Consumo interno e exportação para outro aplicativo.',
+                'Versão 1.7.0 · Consumo interno e exportação para outro aplicativo.',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -406,3 +406,4 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 }
+

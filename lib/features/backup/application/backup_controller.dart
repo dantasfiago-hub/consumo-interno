@@ -1,9 +1,13 @@
 import 'dart:convert';
+
 import '../../../core/backup/backup_envelope.dart';
+
 import 'dart:io';
+
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
 import '../../../infrastructure/local/database.dart';
 
 class BackupController {
@@ -13,17 +17,20 @@ class BackupController {
   String error = '', lastBackup = '';
   BackupController(this.db, {Future<Directory> Function()? directory})
     : defaultDirectory = directory ?? getApplicationSupportDirectory;
-  Future<void> snapshot({bool force = false}) async {
+  Future<void> snapshot({bool force = false, bool required = false}) async {
     if (_running != null) {
       await _running;
-      if (force) await snapshot(force: true);
+      if (force) await snapshot(force: true, required: required);
       return;
     }
-    await (_running = _snapshot(force).whenComplete(() => _running = null));
+    await (_running = _snapshot(
+      force,
+      required,
+    ).whenComplete(() => _running = null));
   }
 
-  Future<void> _snapshot(bool force) async {
-    if (await db.setting('auto_backup') == 'false') return;
+  Future<void> _snapshot(bool force, bool required) async {
+    if (!required && await db.setting('auto_backup') == 'false') return;
     try {
       final previous = DateTime.tryParse(await db.setting('backup_last') ?? '');
       if (!force &&
@@ -77,6 +84,7 @@ class BackupController {
     } catch (e) {
       error = 'Falha no backup automático: $e';
       await db.setSetting('backup_error', error);
+      if (required) rethrow;
     }
   }
 

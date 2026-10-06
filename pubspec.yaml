@@ -1,7 +1,7 @@
 name: consumo_interno
 description: Controle offline de consumo interno com sincronizacao Supabase.
 publish_to: none
-version: 1.6.2+10
+version: 1.7.0+11
 environment:
   sdk: '>=3.8.0 <4.0.0'
 dependencies:
@@ -19,6 +19,10 @@ dependencies:
   intl: ^0.20.2
   file_picker: 10.3.3
   image: 4.5.4
+  qr_flutter: 4.1.0
+  qr: 3.0.2
+  mobile_scanner: 7.4.2
+  zxing2: 0.2.4
   pdf: 3.11.3
   flutter_secure_storage: 9.2.4
 dev_dependencies:

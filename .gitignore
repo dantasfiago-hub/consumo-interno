@@ -24,3 +24,7 @@ android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 linux/flutter/ephemeral/
 windows/flutter/ephemeral/
 *.hprof
+
+# Editable connection defaults used only when compiling
+config/connection.local.json
+

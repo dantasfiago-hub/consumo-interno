@@ -1,12 +1,19 @@
+import '../../core/activation/activation_config.dart';
+
 import 'dart:convert';
 import 'dart:io';
+
 import '../../core/backup/compressed_backup.dart';
+
 import 'package:crypto/crypto.dart';
+
 import '../../core/access/sectors.dart';
 import '../../features/exports/domain/export.dart';
 import '../../features/exports/data/export_repository.dart';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+
 import '../../domain/models.dart';
 import '../local/database.dart';
 
@@ -29,6 +36,24 @@ class CloudService implements ExportRepository {
   CloudService(this.db, {http.Client? client, FlutterSecureStorage? storage})
     : client = client ?? http.Client(),
       storage = storage ?? const FlutterSecureStorage();
+  Future<String> _refreshKey() async =>
+      'refresh_token:${sha256.convert(utf8.encode('${await db.setting('cloud_url')}|${await db.setting('store')}'))}';
+  Future<String?> _readRefreshToken() async {
+    final scoped = await storage.read(key: await _refreshKey());
+    if (scoped != null) return scoped;
+    final binding = await db.setting('binding');
+    final prefix =
+        '${await db.setting('cloud_url')}|${await db.setting('store')}|';
+    return binding?.startsWith(prefix) == true
+        ? storage.read(key: 'refresh_token')
+        : null;
+  }
+
+  Future<void> _writeRefreshToken(String token) async {
+    await storage.write(key: await _refreshKey(), value: token);
+    await storage.delete(key: 'refresh_token');
+  }
+
   Future<bool> get configured async =>
       (await db.setting('cloud_url'))?.isNotEmpty == true;
   Future<dynamic> _request(String path, {Json? body, bool auth = true}) async {
@@ -54,6 +79,11 @@ class CloudService implements ExportRepository {
     } catch (_) {
       data = null;
     }
+    if (response.statusCode == 404 && path.contains('activate_sector_device')) {
+      throw const CloudException(
+        'Atualize o Supabase executando supabase/migrations/009_activation_and_scope_changes.sql após 008.',
+      );
+    }
     if (response.statusCode == 404 &&
         (path.contains('export_batch_v2') ||
             path.contains('export_batch_v3'))) {
@@ -77,6 +107,11 @@ class CloudService implements ExportRepository {
   }
 
   Future<void> configure(String url, String key, String store) async {
+    try {
+      ConnectionConfig(url, key, store).validate();
+    } on FormatException catch (e) {
+      throw CloudException(e.message.toString());
+    }
     if (key.trim().startsWith('sb_secret_')) {
       throw const CloudException(
         'Use uma chave pública, nunca uma chave secreta.',
@@ -119,9 +154,21 @@ class CloudService implements ExportRepository {
     if (await db.setting('binding') != null &&
         (old != null && old != url.trim().replaceFirst(RegExp(r'/$'), '') ||
             oldStore != null && oldStore != store.trim())) {
-      throw const CloudException(
-        'Esta instalação já está vinculada. Use uma instalação separada para outra loja.',
-      );
+      if (await db.setting('device_setup_mode') != '1') {
+        throw const CloudException(
+          'Use Sair ou trocar de setor antes de alterar a loja.',
+        );
+      }
+      final token = await _readRefreshToken();
+      if (token != null) await _writeRefreshToken(token);
+      await db.clearDeviceScope();
+      await db.removeSetting('binding');
+    }
+    if (old != null && oldStore != null) {
+      final oldToken =
+          await storage.read(key: await _refreshKey()) ??
+          await storage.read(key: 'refresh_token');
+      if (oldToken != null) await _writeRefreshToken(oldToken);
     }
     await db.setSetting(
       'cloud_url',
@@ -150,7 +197,7 @@ class CloudService implements ExportRepository {
         'Informe o código de ativação de 32 caracteres.',
       );
     }
-    final refreshToken = await storage.read(key: 'refresh_token');
+    final refreshToken = await _readRefreshToken();
     if (refreshToken == null && await db.setting('binding') != null) {
       throw const CloudException(
         'Credencial do aparelho perdida. Preserve os dados e solicite recuperação ao administrador.',
@@ -178,7 +225,7 @@ class CloudService implements ExportRepository {
     }
     _token = data['access_token'];
     // Keep the identity even when the activation response is lost or the code is mistyped.
-    await storage.write(key: 'refresh_token', value: data['refresh_token']);
+    await _writeRefreshToken(data['refresh_token'] as String);
     var device = await db.setting('device');
     device ??= uuid.v4();
     await db.setSetting('device', device);
@@ -188,6 +235,7 @@ class CloudService implements ExportRepository {
         'p_store': await db.setting('store'),
         'p_device': device,
         'p_code': code.trim(),
+        'p_allow_scope_change': await db.setting('device_setup_mode') == '1',
       },
     );
     if (result is! Map || result['activated'] != true) {
@@ -219,7 +267,7 @@ class CloudService implements ExportRepository {
   }
 
   Future<void> refresh() async {
-    final token = await storage.read(key: 'refresh_token');
+    final token = await _readRefreshToken();
     if (token == null) {
       throw const CloudException(
         'Ative ou recupere a credencial do aparelho para sincronizar. O uso local continua disponível.',
@@ -247,7 +295,7 @@ class CloudService implements ExportRepository {
       );
     }
     // Refresh tokens rotate. Persist the newly issued one before another network request.
-    await storage.write(key: 'refresh_token', value: data['refresh_token']);
+    await _writeRefreshToken(data['refresh_token'] as String);
     final memberships = await _request(
       '/rest/v1/memberships?store_id=eq.$store&user_id=eq.$id&select=role,sector,features_version',
     );
@@ -259,6 +307,21 @@ class CloudService implements ExportRepository {
       await db.setSetting('sector', sectorId);
       await db.setSetting('access_verified', '0');
       throw const CloudException('Usuário sem acesso a esta loja.');
+    }
+    final nextRole = memberships.first['role'] as String;
+    final nextSector = memberships.first['sector'] as String? ?? '';
+    if (await db.setting('role') != 'unconfigured' &&
+        await db.setting('device_mode') == '1' &&
+        existing != null &&
+        (await db.setting('role') != nextRole ||
+            await db.setting('sector') != nextSector)) {
+      if (await db.setting('device_setup_mode') != '1') {
+        await db.setSetting('access_verified', '0');
+        throw const CloudException(
+          'O acesso mudou. Entre em Sair ou trocar de setor para reativar com segurança.',
+        );
+      }
+      await db.clearDeviceScope();
     }
     featuresVersion = memberships.first['features_version'] ?? 3;
     await db.setSetting('features_version', featuresVersion.toString());
@@ -278,7 +341,10 @@ class CloudService implements ExportRepository {
     await db.setSetting('binding', binding);
     await db.setSetting('role', role);
     await db.setSetting('sector', sectorId);
-    await db.setSetting('access_verified', '1');
+    await db.setSetting(
+      'access_verified',
+      await db.setting('device_setup_mode') == '1' ? '0' : '1',
+    );
   }
 
   Future<void> logout() async {

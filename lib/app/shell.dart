@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../features/administration/presentation/administration_page.dart';
 import 'app_state.dart';
 import 'connection_page.dart';
@@ -58,6 +59,37 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) widget.state.sync();
   }
 
+  Future<void> leave() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair ou trocar de setor?'),
+        content: const Text(
+          'Os registros serão sincronizados e uma cópia local será preservada. Rascunhos ainda não lançados serão descartados. Para entrar novamente ou trocar de setor, use um código autorizado pelo administrador.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Voltar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sincronizar e sair'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    try {
+      await widget.state.leaveForSetup();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.state,
@@ -97,6 +129,11 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
             ],
           ),
           actions: [
+            IconButton(
+              tooltip: 'Sair ou trocar de setor',
+              onPressed: s.syncing ? null : leave,
+              icon: const Icon(Icons.logout),
+            ),
             if (s.adminProtected)
               IconButton(
                 tooltip: 'Bloquear administração',
@@ -211,9 +248,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   selected: selected == i,
-                                  selectedTileColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primaryContainer,
+                                  selectedTileColor: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer,
                                   leading: Icon(icons[i]),
                                   title: Text(labels[i]),
                                   onTap: () => setState(() => selected = i),
@@ -225,9 +262,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                               child: Text(
                                 'Uso interno\nAndroid e Windows',
                                 style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                               ),
                             ),

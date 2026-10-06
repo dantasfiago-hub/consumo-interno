@@ -1,8 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+
 import 'app_state.dart';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+import '../core/activation/activation_config.dart';
+import '../core/activation/qr_image_decoder.dart';
+import '../core/access/sectors.dart';
+import '../features/activation/presentation/activation_qr_page.dart';
 
 /// First provisioning only. No local administrator fallback is offered.
 class ConnectionPage extends StatefulWidget {
@@ -30,10 +40,70 @@ class _ConnectionPageState extends State<ConnectionPage> {
       ['cloud_url', 'cloud_key', 'store'].map(widget.state.db.setting),
     );
     if (!mounted) return;
-    url.text = values[0] ?? '';
-    key.text = values[1] ?? '';
-    store.text = values[2] ?? '';
+    url.text = values[0] ?? ConnectionDefaults.url;
+    key.text = values[1] ?? ConnectionDefaults.publicKey;
+    store.text = values[2] ?? ConnectionDefaults.store;
     setState(() {});
+  }
+
+  Future<void> _readQr(Future<String?> Function() read) async {
+    setState(() {
+      busy = true;
+      error = '';
+    });
+    try {
+      final raw = await read();
+      if (raw == null || !mounted) return;
+      final data = ActivationConfig.decode(raw);
+      final yes = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Usar esta ativação?'),
+          content: Text(
+            'Projeto: ${Uri.parse(data.connection.url).host}\nLoja: ${data.connection.store}\nAcesso: ${data.slot == 'admin' ? 'Administração' : sectorLabel(data.slot)}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Voltar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Preencher'),
+            ),
+          ],
+        ),
+      );
+      if (yes == true && mounted) {
+        url.text = data.connection.url;
+        key.text = data.connection.publicKey;
+        store.text = data.connection.store;
+        password.text = data.code;
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = 'Não foi possível ler a ativação: $e');
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<String?> _readQrFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
+      withData: true,
+    );
+    if (result == null) return null;
+    final file = result.files.single;
+    if (file.size > 15 * 1024 * 1024) {
+      throw const FormatException('Imagem acima de 15 MB.');
+    }
+    return compute(
+      decodeActivationQrImage,
+      file.bytes ?? await File(file.path!).readAsBytes(),
+    );
   }
 
   @override
@@ -55,7 +125,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
           shrinkWrap: true,
           children: [
             const Text(
-              'O administrador configura a loja e informa o código de ativação. O setor vem desse código e fica fixo. Ative uma vez com internet; depois, abra diretamente os lançamentos, inclusive offline.',
+              'Leia o QR Code ou informe o código fornecido pelo administrador. A conexão padrão pode ser alterada abaixo. O setor é autorizado pelo código. A ativação exige internet; os lançamentos funcionam offline.',
             ),
             if (widget.state.verified)
               const Padding(
@@ -64,6 +134,41 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   'Conta sem setor autorizado. Peça ao administrador para vincular a conta a Horti Fruti, Cozinha ou Padaria.',
                 ),
               ),
+            Wrap(
+              spacing: 8,
+              children: [
+                if (Platform.isAndroid)
+                  OutlinedButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => _readQr(
+                            () => Navigator.push<String>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ActivationQrPage(),
+                              ),
+                            ),
+                          ),
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Ler QR Code'),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : () => _readQr(_readQrFile),
+                  icon: const Icon(Icons.image_outlined),
+                  label: const Text('Abrir imagem do QR Code'),
+                ),
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => _readQr(
+                          () async =>
+                              (await Clipboard.getData(Clipboard.kTextPlain))
+                                  ?.text,
+                        ),
+                  child: const Text('Colar ativação'),
+                ),
+              ],
+            ),
             ExpansionTile(
               title: const Text('Configuração inicial da loja'),
               children: [

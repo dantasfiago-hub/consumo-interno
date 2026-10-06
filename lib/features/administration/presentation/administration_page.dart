@@ -1,3 +1,10 @@
+import 'package:flutter/foundation.dart';
+import '../../../core/activation/qr_image_decoder.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:flutter/services.dart';
+
+import '../../../core/activation/activation_config.dart';
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -147,8 +154,9 @@ class _AdministrationPageState extends State<AdministrationPage> {
                               Padding(
                                 padding: const EdgeInsets.all(12),
                                 child: SelectableText(
-                                  const JsonEncoder.withIndent('  ')
-                                      .convert(issue['snapshot']),
+                                  const JsonEncoder.withIndent(
+                                    '  ',
+                                  ).convert(issue['snapshot']),
                                 ),
                               ),
                               if (![
@@ -255,8 +263,9 @@ class _AdministrationPageState extends State<AdministrationPage> {
                                   Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: SelectableText(
-                                      const JsonEncoder.withIndent('  ')
-                                          .convert(a['detail']),
+                                      const JsonEncoder.withIndent(
+                                        '  ',
+                                      ).convert(a['detail']),
                                     ),
                                   ),
                                 ],
@@ -343,7 +352,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
                 DropdownButtonFormField<String>(
                   initialValue: selectedSector,
                   decoration: const InputDecoration(labelText: 'Setor'),
-                  items: sectors.entries
+                  items: {'admin': 'Administração', ...sectors}.entries
                       .map(
                         (e) => DropdownMenuItem(
                           value: e.key,
@@ -389,14 +398,57 @@ class _AdministrationPageState extends State<AdministrationPage> {
       );
     });
     if (result == null || !mounted || !widget.state.canManage) return;
+    final activation = ActivationConfig(
+      ConnectionConfig(
+        (await widget.state.db.setting('cloud_url'))!,
+        (await widget.state.db.setting('cloud_key'))!,
+        (await widget.state.db.setting('store'))!,
+      ),
+      result!['code'],
+      selectedSector,
+    ).encode();
+    if (!mounted || !widget.state.canManage) return;
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Ativação: ${sectorLabel(selectedSector)}'),
-        content: SelectableText(
-          'Código: ${result!['code']}\nValidade: 24 horas. Uso único: ative uma máquina deste setor. Para outra máquina, gere outro código.',
+        title: Text(
+          'Ativação: ${selectedSector == 'admin' ? 'Administração' : sectorLabel(selectedSector)}',
+        ),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                QrImageView(
+                  data: activation,
+                  size: 320,
+                  backgroundColor: Colors.white,
+                ),
+                SelectableText(
+                  'Código: ${result!['code']}\nValidade: 24 horas. Uso único. O QR Code inclui a configuração da loja.',
+                ),
+                const Text(
+                  'Compartilhe apenas com o responsável pelo aparelho autorizado.',
+                ),
+              ],
+            ),
+          ),
         ),
         actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: activation));
+            },
+            child: const Text('Copiar ativação'),
+          ),
+          TextButton(
+            onPressed: () => guarded(context, () async {
+              final bytes = await compute(encodeActivationQrImage, activation);
+              await saveBytes('ativacao_$selectedSector.png', bytes);
+            }),
+            child: const Text('Salvar QR Code'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Fechar'),
