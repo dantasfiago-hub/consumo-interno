@@ -1,8 +1,14 @@
-# Consumo Interno — 1.6.1+9
+# Consumo Interno — 1.6.2+10
 
 Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronização Supabase/PostgreSQL e exportação individual por setor para o VR Master. Não emite nota fiscal.
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
+
+## Atualização 1.6.2 — várias máquinas por setor
+
+Aplique [008_multiple_sector_devices.sql](supabase/migrations/008_multiple_sector_devices.sql) após 007. Cada novo código ativa uma máquina adicional, sem desconectar as anteriores. Os códigos valem 24 horas e são de uso único. Revogue uma máquina individualmente em Administração → Aparelhos. Produtos e consumos continuam restritos ao setor; sincronização, cancelamentos e exportações usam os dados compartilhados. Consulte [o guia da atualização](docs/ALTERACOES_1_6_2.md).
+
+Também inclui a correção de fotos WebP estáticas. Fonte 1.6.2+10; não foi gerado um novo APK ou EXE nesta alteração. O APK 1.6.1 citado abaixo é da entrega anterior.
 
 ## Correção Android 1.6.1
 
@@ -12,9 +18,9 @@ Gradle 8.14.3, AGP 8.11.1, Kotlin 2.2.21 e Java 17. SDK 36 e NDK 28.2.13676358 f
 
 O administrador ativa cada aparelho com um código de uso restrito ao setor. Depois, os funcionários abrem diretamente Lançar consumo, sem nome, e-mail ou login diário. O setor é fixo; produtos e consumos continuam isolados. O aparelho administrativo usa senha local própria, inclusive offline.
 
-Habilite Anonymous Sign-Ins no Supabase, aplique 007 após 006 e siga [LEIA_PRIMEIRO.md](LEIA_PRIMEIRO.md). Loja nova pode usar `supabase/setup_sector_devices.sql` para gerar os quatro códigos iniciais. Não é necessário criar contas de funcionários: o Auth cria identidades técnicas automaticamente. Troca de aparelho deve preservar pendências antes de revogar o antigo.
+Habilite Anonymous Sign-Ins no Supabase, aplique 007 e 008 após 006 e siga [LEIA_PRIMEIRO.md](LEIA_PRIMEIRO.md). Loja nova pode usar `supabase/setup_sector_devices.sql` para gerar os quatro códigos iniciais. Não é necessário criar contas de funcionários: o Auth cria identidades técnicas automaticamente. Troca de aparelho deve preservar pendências antes de revogar o antigo.
 
-As exportações por setor, controles kg/gramas/UN e confirmações da 1.5 permanecem. Atualização do fonte: 1.6.1+9; APK release 1.6.1+9 compilado e assinatura verificada. Não foi compilado EXE Windows nesta entrega.
+As exportações por setor, controles kg/gramas/UN e confirmações da 1.5 permanecem. Atualização do fonte: 1.6.2+10; APK anterior release 1.6.1+9 compilado e assinatura verificada. Não foi compilado EXE Windows nesta entrega.
 
 ## Implementação
 
@@ -32,7 +38,8 @@ As exportações por setor, controles kg/gramas/UN e confirmações da 1.5 perma
 | `supabase/migrations/004_operations_admin_media.sql` | Auditoria, gestão de vínculos, revisão, imagens e backups com RLS |
 | `supabase/migrations/005_review_fixes.sql` | Idempotência de mídia, código interno, limites e datas históricas |
 | `supabase/migrations/006_sector_export_quantity.sql` | Formato por setor; preservação dos arquivos já gerados |
-| `supabase/migrations/007_sector_devices.sql` | Ativação, limite de um aparelho por setor, vínculos fixos e revogação |
+| `supabase/migrations/007_sector_devices.sql` | Ativação inicial, vínculos fixos e revogação |
+| `supabase/migrations/008_multiple_sector_devices.sql` | Várias máquinas por setor com códigos independentes e preservação dos vínculos existentes |
 | `assets/branding`, `android/.../res`, `windows/runner/resources` | Ícone original na interface e nos binários |
 
 Quantidades são milésimos e valores são centavos. `BigInt` no cliente e `numeric` no servidor calculam o preço depois de somar: `arredondar(total_centavos × 100000 / quantidade_milésimos)`. Para Horti Fruti, o TXT exporta código, quantidade, unidade fixa `1` e preço em até quatro casas. Para Cozinha/Padaria, exporta apenas código e quantidade, nessa ordem. Peso sai em kg (2 kg + 350 g = `2,35` no perfil com vírgula), e UN como número inteiro. Zeros iniciais do código são preservados.
@@ -58,6 +65,7 @@ npm test
 
 O ambiente de validação da 1.6.1 usa Flutter 3.47.5/Dart 3.13.4. O build Android release exige o kit privado de assinatura. O código ZIP exclui suas credenciais; não publique o kit. O Windows precisa ser compilado em Windows com Visual Studio C++.
 
-Nuvem nova: esquema base e 002 a 007, nessa ordem. Nuvem 1.5: somente 007. Nuvem 1.4.1: 006 e 007. Nuvem 1.4.0: 005 a 007. Não reaplique o esquema base. Configure loja/códigos pelo SQL e ative os aparelhos; Administração gera códigos dos setores. Não é necessário e-mail.
+Nuvem nova: esquema base e 002 a 008, nessa ordem. Nuvem 1.6/1.6.1: somente 008. Nuvem 1.5: 007 e 008. Nuvem 1.4.1: 006 a 008. Nuvem 1.4.0: 005 a 008. Não reaplique o esquema base. Configure loja/códigos pelo SQL e ative os aparelhos; Administração gera códigos dos setores. Não é necessário e-mail.
 
 Consulte [arquitetura](docs/ARQUITETURA_MELHORIAS.md), [alterações](docs/ALTERACOES_1_6.md) e [validação](docs/VALIDACAO.md). Capturas são renderizadas pelos testes Flutter com dados fictícios, não fotos de execução em Windows/telefone físico.
+

@@ -1,7 +1,7 @@
 name: consumo_interno
 description: Controle offline de consumo interno com sincronizacao Supabase.
 publish_to: none
-version: 1.6.1+9
+version: 1.6.2+10
 environment:
   sdk: '>=3.8.0 <4.0.0'
 dependencies:
@@ -32,3 +32,4 @@ flutter:
     - assets/fonts/Roboto-Regular.ttf
     - assets/fonts/Roboto-Bold.ttf
     - assets/fonts/Roboto_LICENSE.txt
+

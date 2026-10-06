@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
 import '../../../app/app_state.dart';
 import '../../../core/access/sectors.dart';
 import '../../../core/types/json.dart';
@@ -87,7 +89,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
                       Padding(
                         padding: const EdgeInsets.all(12),
                         child: Text(
-                          'Gere um código e ative o único aparelho do setor. Não é necessário criar contas com e-mail. Vínculos antigos aparecem abaixo para revogação ou migração.',
+                          'Gere um código para cada máquina do setor. Os aparelhos compartilham os dados após sincronizar. Para substituir uma máquina, revogue somente o acesso dela abaixo e gere outro código.',
                         ),
                       ),
                       FilledButton.icon(
@@ -145,9 +147,8 @@ class _AdministrationPageState extends State<AdministrationPage> {
                               Padding(
                                 padding: const EdgeInsets.all(12),
                                 child: SelectableText(
-                                  const JsonEncoder.withIndent(
-                                    '  ',
-                                  ).convert(issue['snapshot']),
+                                  const JsonEncoder.withIndent('  ')
+                                      .convert(issue['snapshot']),
                                 ),
                               ),
                               if (![
@@ -254,9 +255,8 @@ class _AdministrationPageState extends State<AdministrationPage> {
                                   Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: SelectableText(
-                                      const JsonEncoder.withIndent(
-                                        '  ',
-                                      ).convert(a['detail']),
+                                      const JsonEncoder.withIndent('  ')
+                                          .convert(a['detail']),
                                     ),
                                   ),
                                 ],
@@ -330,7 +330,6 @@ class _AdministrationPageState extends State<AdministrationPage> {
 
   Future<void> provision() async {
     String selectedSector = 'cozinha';
-    bool replace = false;
     final reason = TextEditingController();
     final yes = await showDialog<bool>(
       context: context,
@@ -359,13 +358,8 @@ class _AdministrationPageState extends State<AdministrationPage> {
                   maxLength: 300,
                   decoration: const InputDecoration(labelText: 'Justificativa'),
                 ),
-                CheckboxListTile(
-                  value: replace,
-                  onChanged: (value) => set(() => replace = value!),
-                  title: const Text('Substituir aparelho existente'),
-                  subtitle: const Text(
-                    'Sincronize e preserve os dados antes. O aparelho anterior perde acesso na próxima conexão; pendências offline precisam ser preservadas.',
-                  ),
+                const Text(
+                  'Este código adiciona uma máquina sem desconectar as existentes.',
                 ),
               ],
             ),
@@ -390,7 +384,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
     await run(() async {
       result = await widget.state.cloud.provisionSector(
         selectedSector,
-        replace,
+        false,
         justification,
       );
     });
@@ -400,7 +394,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
       builder: (context) => AlertDialog(
         title: Text('Ativação: ${sectorLabel(selectedSector)}'),
         content: SelectableText(
-          'Código: ${result!['code']}\nValidade: 24 horas. Use somente no aparelho deste setor.',
+          'Código: ${result!['code']}\nValidade: 24 horas. Uso único: ative uma máquina deste setor. Para outra máquina, gere outro código.',
         ),
         actions: [
           TextButton(

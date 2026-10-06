@@ -1,3 +1,11 @@
+# Instalação atual — 1.6.2+10
+
+Para habilitar várias máquinas em cada setor, siga [Atualização 1.6.2](docs/ALTERACOES_1_6_2.md) e execute 008 após 007. Em loja nova, aplique o esquema e 002 a 008 antes do setup. Gere um código independente para cada máquina. A opção de substituir por setor foi removida; a revogação agora deve identificar a máquina. Os códigos não usados dos setores continuam válidos até expirar.
+
+O conteúdo abaixo documenta a entrega anterior 1.6.1. Onde indicar apenas uma máquina por setor ou substituição por setor, siga o guia 1.6.2 acima. O fonte atual é 1.6.2+10; os binários anteriores não incluem esta alteração.
+
+---
+
 # Instalação — Consumo Interno 1.6.1+9
 
 Correção de compilação Android: Gradle 8.14.3, AGP 8.11.1, Kotlin 2.2.21, Java 17, API 36 e NDK 28.2.13676358. Consulte `docs/COMPILAR_ANDROID.md` para instalação do SDK sem Android Studio e assinatura.
@@ -111,3 +119,4 @@ Windows: compile no Windows com Flutter e Visual Studio com Desenvolvimento para
 O `intl` mantém a faixa `^0.20.2`; o ajuste CMake Linux do armazenamento seguro permanece incluído. No Ubuntu, use `flutter run -d linux`; `flutter run -d windows` exige Windows.
 
 Veja `docs/ALTERACOES_1_6.md`, `docs/VALIDACAO.md` e a documentação histórica incluída no ZIP.
+

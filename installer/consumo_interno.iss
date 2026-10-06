@@ -1,5 +1,5 @@
 #define AppName "Consumo interno"
-#define AppVersion "1.6.1"
+#define AppVersion "1.6.2"
 #define AppExe "consumo_interno.exe"
 [Setup]
 AppId={{09C29B13-62D6-4BE3-AE17-2A481CB3A53E}
@@ -25,3 +25,4 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 Name: "desktopicon"; Description: "Criar atalho na área de trabalho"; GroupDescription: "Atalhos:"
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Abrir {#AppName}"; Flags: nowait postinstall skipifsilent
+
