@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-/// Separate integer fields; persistence still uses thousandths of a unit/kg.
+import '../../../core/formatting/sum_expression.dart';
+import 'sum_number_field.dart';
+
+/// Separate integer sums; persistence still uses thousandths of a unit/kg.
 class QuantityFields extends StatelessWidget {
   final String unit;
   final TextEditingController whole, grams;
@@ -17,12 +19,24 @@ class QuantityFields extends StatelessWidget {
     String label,
     String id,
     int maximum,
+    String suffix,
   ) => ValueListenableBuilder<TextEditingValue>(
     valueListenable: controller,
     builder: (context, value, _) {
-      final number = int.tryParse(value.text) ?? 0;
+      int? number;
+      try {
+        number = parseSumScaled(
+          value.text.trim().isEmpty ? '0' : value.text,
+          0,
+          allowZero: true,
+          maximum: maximum,
+        );
+      } on FormatException {
+        // Do not discard an unfinished/invalid expression when stepping.
+      }
       void step(int delta) {
-        final next = (number + delta).clamp(0, maximum).toString();
+        if (number == null) return;
+        final next = (number! + delta).clamp(0, maximum).toString();
         controller.value = TextEditingValue(
           text: next,
           selection: TextSelection.collapsed(offset: next.length),
@@ -30,27 +44,29 @@ class QuantityFields extends StatelessWidget {
       }
 
       return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconButton(
             key: ValueKey('$id-minus'),
             tooltip: 'Diminuir $label',
-            onPressed: number <= 0 ? null : () => step(-1),
+            onPressed: number == null || number <= 0 ? null : () => step(-1),
             icon: const Icon(Icons.remove_circle_outline),
           ),
           Expanded(
-            child: TextField(
+            child: SumNumberField(
               key: ValueKey(id),
               controller: controller,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              maxLength: maximum.toString().length,
-              decoration: InputDecoration(labelText: label, counterText: ''),
+              label: label,
+              maximum: maximum,
+              format: (n) => '$n $suffix',
             ),
           ),
           IconButton(
             key: ValueKey('$id-plus'),
             tooltip: 'Aumentar $label',
-            onPressed: number >= maximum ? null : () => step(1),
+            onPressed: number == null || number >= maximum
+                ? null
+                : () => step(1),
             icon: const Icon(Icons.add_circle_outline),
           ),
         ],
@@ -67,13 +83,15 @@ class QuantityFields extends StatelessWidget {
         unit == 'KG' ? 'Quilogramas (kg)' : 'Quantidade (UN)',
         unit == 'KG' ? 'quantity-kg' : 'quantity-units',
         999999999,
+        unit == 'KG' ? 'kg' : 'UN',
       ),
       if (unit == 'KG') ...[
         const SizedBox(height: 12),
-        _field(grams, 'Gramas (g)', 'quantity-grams', 999),
+        _field(grams, 'Gramas (g)', 'quantity-grams', 999, 'g'),
         const SizedBox(height: 8),
         const Text(
-          'Ex.: 2 kg e 350 g. Gramas: de 0 a 999. Cada botão altera 1.',
+          'Ex.: kg 2+1 e gramas 200+150 = 3 kg e 350 g. '
+          'A soma das gramas deve ficar de 0 a 999. Cada botão altera 1.',
         ),
       ],
     ],

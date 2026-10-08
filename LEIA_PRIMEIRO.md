@@ -1,6 +1,8 @@
-# Instalação — Consumo Interno 1.7.0+11
+# Instalação — Consumo Interno 1.7.1+12
 
 Veja [o guia completo da versão 1.7](docs/ALTERACOES_1_7.md) para incorporar a conexão, ativar por QR e sair/trocar de setor. O fonte foi atualizado; os binários anteriores não incluem estas alterações.
+
+A versão 1.7.1 permite somar nos campos do lançamento sem `=` (ex.: `10+20+5`). Não exige nova migração de banco. Veja docs/ALTERACOES_1_7_1.md e recompile os aparelhos.
 
 ## Supabase existente
 

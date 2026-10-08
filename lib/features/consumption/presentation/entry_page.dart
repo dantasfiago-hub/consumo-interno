@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+
 import 'quantity_fields.dart';
+import 'sum_number_field.dart';
+import '../../../core/formatting/sum_expression.dart';
 import '../../../core/access/sectors.dart';
+
 import 'package:intl/intl.dart';
+
 import '../../../app/app_state.dart';
 import '../../../infrastructure/local/database.dart';
 import '../../../domain/models.dart';
@@ -207,9 +212,9 @@ class _EntryPageState extends State<EntryPage> {
                           style: TextStyle(
                             fontSize: 25,
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onPrimaryContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
                           ),
                         ),
                       ],
@@ -482,15 +487,12 @@ class _ItemPickerState extends State<ItemPicker> {
                       grams: grams,
                     ),
                     const SizedBox(height: 16),
-                    TextField(
+                    SumNumberField(
                       controller: total,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Valor total (R\$)',
-                        helperText: 'Total referente à quantidade informada.',
-                      ),
+                      label: 'Valor total (R\$)',
+                      decimals: 2,
+                      format: money,
+                      helper: 'Total do produto. Você pode somar: 10,50+20+5.',
                     ),
                     if (error.isNotEmpty)
                       Padding(
@@ -523,9 +525,9 @@ class _ItemPickerState extends State<ItemPicker> {
               try {
                 final p = selected!;
                 final q = p.unit == 'KG'
-                    ? parseWeightParts(amount.text, grams.text)
-                    : parseQuantity(amount.text, p.unit);
-                final cents = parseScaled(total.text, 2);
+                    ? parseSumWeightParts(amount.text, grams.text)
+                    : parseSumQuantity(amount.text, p.unit);
+                final cents = parseSumScaled(total.text, 2);
                 Navigator.pop(
                   context,
                   ConsumptionItem(
