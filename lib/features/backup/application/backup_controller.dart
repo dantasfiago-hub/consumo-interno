@@ -35,7 +35,7 @@ class BackupController {
       final previous = DateTime.tryParse(await db.setting('backup_last') ?? '');
       if (!force &&
           previous != null &&
-          DateTime.now().difference(previous) < const Duration(hours: 24)) {
+          DateTime.now().difference(previous) < const Duration(days: 7)) {
         return;
       }
       final custom = await db.setting('backup_directory');

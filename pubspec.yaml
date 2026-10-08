@@ -1,7 +1,7 @@
 name: consumo_interno
 description: Controle offline de consumo interno com sincronizacao Supabase.
 publish_to: none
-version: 1.7.2+13
+version: 1.7.3+14
 environment:
   sdk: '>=3.8.0 <4.0.0'
 dependencies:

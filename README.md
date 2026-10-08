@@ -1,8 +1,12 @@
-# Consumo Interno — 1.7.2+13
+# Consumo Interno — 1.7.3+14
 
 Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronização Supabase/PostgreSQL e exportação individual por setor para o VR Master. Não emite nota fiscal.
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
+
+## Atualização 1.7.3 — backups locais semanais
+
+O intervalo automático local agora é de sete dias desde a última cópia bem-sucedida. A próxima cópia é criada quando houver uso/sincronização após esse prazo; o aplicativo fechado não executa backups. Mantém até 14 cópias por vínculo. Backup manual, ativação e saída/troca de setor continuam podendo gerar cópias adicionais. Backups remotos não foram alterados. Não exige SQL; recompile para aplicar. Veja [o guia](docs/ALTERACOES_1_7_3.md).
 
 ## Atualização 1.7.2 — frequência de backups locais
 
@@ -22,7 +26,7 @@ Aplique 009 após 008. Leia [o guia 1.7](docs/ALTERACOES_1_7.md). Os valores rea
 
 Aplique [008_multiple_sector_devices.sql](supabase/migrations/008_multiple_sector_devices.sql) após 007. Cada novo código ativa uma máquina adicional, sem desconectar as anteriores. Os códigos valem 24 horas e são de uso único. Revogue uma máquina individualmente em Administração → Aparelhos. Produtos e consumos continuam restritos ao setor; sincronização, cancelamentos e exportações usam os dados compartilhados. Consulte [o guia da atualização](docs/ALTERACOES_1_6_2.md).
 
-Também inclui a correção de fotos WebP estáticas. Fonte 1.7.2+13; não foi gerado um novo APK ou EXE nesta alteração. O APK 1.6.1 citado abaixo é da entrega anterior.
+Também inclui a correção de fotos WebP estáticas. Fonte 1.7.3+14; não foi gerado um novo APK ou EXE nesta alteração. O APK 1.6.1 citado abaixo é da entrega anterior.
 
 ## Correção Android 1.6.1
 
@@ -34,7 +38,7 @@ O administrador ativa cada aparelho com um código de uso restrito ao setor. Dep
 
 Habilite Anonymous Sign-Ins no Supabase, aplique 007, 008 e 009 após 006 e siga [LEIA_PRIMEIRO.md](LEIA_PRIMEIRO.md). Loja nova pode usar `supabase/setup_sector_devices.sql` para gerar os quatro códigos iniciais. Não é necessário criar contas de funcionários: o Auth cria identidades técnicas automaticamente. Troca de aparelho deve preservar pendências antes de revogar o antigo.
 
-As exportações por setor, controles kg/gramas/UN e confirmações da 1.5 permanecem. Atualização do fonte: 1.7.2+13; APK anterior release 1.6.1+9 compilado e assinatura verificada. Não foi compilado EXE Windows nesta entrega.
+As exportações por setor, controles kg/gramas/UN e confirmações da 1.5 permanecem. Atualização do fonte: 1.7.3+14; APK anterior release 1.6.1+9 compilado e assinatura verificada. Não foi compilado EXE Windows nesta entrega.
 
 ## Implementação
 
