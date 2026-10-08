@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../features/administration/presentation/administration_page.dart';
 import 'app_state.dart';
+import '../features/settings/presentation/appearance_card.dart';
 import 'connection_page.dart';
 import 'admin_unlock_page.dart';
 import '../core/access/sectors.dart';
@@ -129,6 +130,29 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
             ],
           ),
           actions: [
+            IconButton(
+              key: const ValueKey('change-theme'),
+              tooltip: 'Alterar tema',
+              icon: const Icon(Icons.brightness_6_outlined),
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Tema do aparelho'),
+                  content: SizedBox(
+                    width: 420,
+                    child: SingleChildScrollView(
+                      child: AppearanceCard(controller: s.appearance),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Fechar'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             IconButton(
               tooltip: 'Sair ou trocar de setor',
               onPressed: s.syncing ? null : leave,
