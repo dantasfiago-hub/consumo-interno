@@ -264,7 +264,7 @@ class AppState extends ChangeNotifier {
         if (!canManage) throw StateError('Desbloqueie a administração.');
         await catalog.save(p, expectedVersion: expectedVersion);
         await _afterLocalCommit(() async {
-          await backups.snapshot(force: true);
+          await backups.snapshot();
           await load();
         });
       });
@@ -278,7 +278,7 @@ class AppState extends ChangeNotifier {
         ...recentProducts,
       }.take(20).toList();
       await db.setSetting('recent_products', jsonEncode(recent));
-      await backups.snapshot(force: true);
+      await backups.snapshot();
       await load();
     });
   });
@@ -288,7 +288,7 @@ class AppState extends ChangeNotifier {
         if (!accessReady) throw StateError('Acesso bloqueado.');
         await consumption.cancel(c, reason, batches);
         await _afterLocalCommit(() async {
-          await backups.snapshot(force: true);
+          await backups.snapshot();
           await load();
         });
       });

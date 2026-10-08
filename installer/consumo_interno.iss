@@ -1,5 +1,5 @@
 #define AppName "Consumo interno"
-#define AppVersion "1.7.1"
+#define AppVersion "1.7.2"
 #define AppExe "consumo_interno.exe"
 [Setup]
 AppId={{09C29B13-62D6-4BE3-AE17-2A481CB3A53E}
