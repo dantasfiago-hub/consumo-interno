@@ -4,6 +4,10 @@ Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronizaçã
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
 
+## Tema escuro — cinza mais claro e verde escuro
+
+O tema escuro agora usa fundo cinza médio, cartões mais claros, campos cinza escuro e botões verde floresta com texto branco. Links e indicadores usam verde claro para preservar o contraste. A paleta central é aplicada a todos os setores e à administração. Recompile para aplicar; não exige SQL e não inclui novos APK/EXE. Veja [os detalhes](docs/TEMA_CINZA_VERDE.md).
+
 ## Atualização 1.7.6 — retenção de backups
 
 Mantém até quatro cópias locais por vínculo e duas cópias na nuvem por loja/identidade/aparelho. O intervalo automático local continua em sete dias; cópias forçadas permanecem. Execute [010_backup_retention.sql](supabase/migrations/010_backup_retention.sql) após 009 e recompile o aplicativo. A migração elimina as cópias remotas excedentes, preservando as duas mais recentes; a limpeza local ocorre após o próximo backup bem-sucedido. O texto de Configurações foi corrigido. Veja [o guia](docs/ALTERACOES_1_7_6.md).
