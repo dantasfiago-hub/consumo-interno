@@ -30,6 +30,81 @@ void main() {
   setUp(() => db = LocalDatabase(NativeDatabase.memory()));
   tearDown(() => db.close());
   test(
+    'Consulta pagina antes de decodificar e mantém ordem e isolamento por setor',
+    () async {
+      await db.transaction(() async {
+        for (var i = 0; i < 120; i++) {
+          await db.acceptRemote('consumption', {
+            ...sample().toJson(),
+            'id': 'c${i.toString().padLeft(3, '0')}',
+            'sector': i.isEven ? 'Horti _ Fruti' : 'Cozinha',
+          });
+        }
+        await db.acceptRemote('consumption', {
+          ...sample().toJson(),
+          'id': 'assigned',
+          'sector': 'Cozinha',
+          '_sector_id': 'hortifruti',
+        });
+      });
+      final all = await db.consumptions(sectorId: 'hortifruti');
+      expect(all, hasLength(61));
+      expect(all.every((c) => c.sectorId == 'hortifruti'), isTrue);
+      final first = await db.consumptions(sectorId: 'hortifruti', limit: 50);
+      final last = await db.consumptions(
+        sectorId: 'hortifruti',
+        limit: 50,
+        offset: 50,
+      );
+      expect(first, hasLength(50));
+      expect(last, hasLength(11));
+      expect([...first, ...last].map((c) => c.id), all.map((c) => c.id));
+      expect(first.first.id, 'c118');
+      expect((await db.consumptions(limit: 1)).single.id, 'c119');
+      await expectLater(db.consumptions(limit: 0), throwsArgumentError);
+      await expectLater(db.consumptions(offset: -1), throwsArgumentError);
+      await expectLater(
+        db.consumptions(sectorId: 'invalido'),
+        throwsArgumentError,
+      );
+    },
+  );
+  test(
+    'Atualização do SQLite v2 preserva registros e cria índice de histórico',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'migration_history_',
+      );
+      final file = File('${directory.path}/dados.sqlite');
+      final old = LocalDatabase(NativeDatabase(file));
+      try {
+        await old.acceptRemote('consumption', sample().toJson());
+        await old.customStatement('DROP INDEX consumption_history');
+        await old.customStatement('PRAGMA user_version = 2');
+      } finally {
+        await old.close();
+      }
+      final upgraded = LocalDatabase(NativeDatabase(file));
+      try {
+        expect((await upgraded.consumptions(limit: 50)).single.id, 'c');
+        final indexes = await upgraded
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type='index' AND name='consumption_history'",
+            )
+            .get();
+        expect(indexes, hasLength(1));
+        expect(
+          (await upgraded.customSelect('PRAGMA user_version').getSingle())
+              .read<int>('user_version'),
+          3,
+        );
+      } finally {
+        await upgraded.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+  test(
     'Produto e fila são gravados atomicamente; código não duplica',
     () async {
       await db.saveProduct(p);

@@ -356,6 +356,11 @@ class CloudService implements ExportRepository {
     // Local database stays bound to its original user. Never mix accounts.
     _token = null;
     await storage.delete(key: 'refresh_token');
+    await storage.delete(key: await _refreshKey());
+    userId = null;
+    role = 'unconfigured';
+    sectorId = '';
+    await db.setSetting('access_verified', '0');
   }
 
   Future<void> sync() async {

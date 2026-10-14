@@ -1,3 +1,4 @@
+import '../../consumption/presentation/consumption_query_builder.dart';
 import '../../../core/access/sectors.dart';
 
 import 'dart:convert';
@@ -13,7 +14,8 @@ import '../../../core/widgets/common.dart';
 
 class ReportsPage extends StatefulWidget {
   final AppState state;
-  const ReportsPage({super.key, required this.state});
+  final bool active;
+  const ReportsPage({super.key, required this.state, this.active = true});
   @override
   State<ReportsPage> createState() => _ReportsPageState();
 }
@@ -37,13 +39,26 @@ class _ReportsPageState extends State<ReportsPage> {
       filter.maxCents != null ||
       filter.status == 'cancelled';
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ConsumptionQueryBuilder(
+    state: widget.state,
+    active: widget.active && resultsVisible,
+    sectorId: fullHistory ? null : sectorKey(filter.sector),
+    builder: (context, records, loading, error) =>
+        _buildContent(context, records, loading, error),
+  );
+
+  Widget _buildContent(
+    BuildContext context,
+    List<Consumption> records,
+    bool loading,
+    Object? loadError,
+  ) {
     if (!widget.state.canManage) {
       return const Center(child: Text('Acesso exclusivo do administrador.'));
     }
     final rows = resultsVisible
         ? reportRows(
-            widget.state.consumptions,
+            records,
             fullHistory ? (ReportFilter()..status = '') : filter,
           )
         : <ReportRow>[];
@@ -68,6 +83,12 @@ class _ReportsPageState extends State<ReportsPage> {
             'Relatórios',
             'Combine filtros e exporte os resultados.',
           ),
+          SizedBox(
+            height: loading ? 4 : 0,
+            child: loading ? const LinearProgressIndicator() : null,
+          ),
+          if (loadError != null)
+            Text('Falha ao consultar consumos: $loadError'),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),

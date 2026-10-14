@@ -1,3 +1,4 @@
+import '../../consumption/presentation/consumption_query_builder.dart';
 import 'package:flutter/material.dart';
 import '../../../core/access/sectors.dart';
 import '../../../app/app_state.dart';
@@ -10,7 +11,8 @@ import '../application/save_export_artifact.dart';
 
 class ExportsPage extends StatefulWidget {
   final AppState state;
-  const ExportsPage({super.key, required this.state});
+  final bool active;
+  const ExportsPage({super.key, required this.state, this.active = true});
   @override
   State<ExportsPage> createState() => _ExportsPageState();
 }
@@ -33,7 +35,20 @@ class _ExportsPageState extends State<ExportsPage> {
     'excluded_codes': excluded.toList()..sort(),
   };
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ConsumptionQueryBuilder(
+    state: widget.state,
+    active: widget.active && selectedSector.isNotEmpty,
+    sectorId: selectedSector.isEmpty ? null : selectedSector,
+    builder: (context, records, loading, error) =>
+        _buildContent(context, records, loading, error),
+  );
+
+  Widget _buildContent(
+    BuildContext context,
+    List<Consumption> records,
+    bool loading,
+    Object? loadError,
+  ) {
     final s = widget.state;
     if (!s.canManage) {
       return const Padding(
@@ -45,7 +60,7 @@ class _ExportsPageState extends State<ExportsPage> {
     }
     final eligible = eligibleExportRows(
       reportRows(
-        s.consumptions.where((c) => c.sectorId == selectedSector).toList(),
+        records.where((c) => c.sectorId == selectedSector).toList(),
         filter,
       ),
       s.batches,
@@ -75,6 +90,12 @@ class _ExportsPageState extends State<ExportsPage> {
             'Exportações',
             'Agrupe os consumos por produto e acompanhe os arquivos do VR Master.',
           ),
+          SizedBox(
+            height: loading ? 4 : 0,
+            child: loading ? const LinearProgressIndicator() : null,
+          ),
+          if (loadError != null)
+            Text('Falha ao consultar consumos: $loadError'),
           const Text(
             'Prévia dos dados locais. Confirme que os outros dispositivos sincronizaram antes de reservar. O lote definitivo exige conexão.',
           ),
@@ -108,7 +129,7 @@ class _ExportsPageState extends State<ExportsPage> {
                 Chip(label: Text('Disponíveis: ${eligible.length}')),
                 Chip(
                   label: Text(
-                    'Protegidos: ${reportRows(s.consumptions.where((c) => c.sectorId == selectedSector).toList(), ReportFilter()).length - eligibleExportRows(reportRows(s.consumptions.where((c) => c.sectorId == selectedSector).toList(), ReportFilter()), s.batches).length}',
+                    'Protegidos: ${reportRows(records.where((c) => c.sectorId == selectedSector).toList(), ReportFilter()).length - eligibleExportRows(reportRows(records.where((c) => c.sectorId == selectedSector).toList(), ReportFilter()), s.batches).length}',
                   ),
                 ),
                 Chip(
@@ -436,9 +457,9 @@ class _ExportsPageState extends State<ExportsPage> {
       final refreshed =
           eligibleExportRows(
                 reportRows(
-                  widget.state.consumptions
-                      .where((c) => c.sectorId == selectedSector)
-                      .toList(),
+                  (await widget.state.consumption.load(
+                    sectorId: selectedSector,
+                  )).where((c) => c.sectorId == selectedSector).toList(),
                   filter,
                 ),
                 widget.state.batches,

@@ -1,3 +1,4 @@
+import 'consumption_query_builder.dart';
 import 'package:flutter/material.dart';
 import '../../../core/access/sectors.dart';
 import '../../../app/app_state.dart';
@@ -6,23 +7,41 @@ import '../../../core/widgets/common.dart';
 
 class HistoryPage extends StatefulWidget {
   final AppState state;
-  const HistoryPage({super.key, required this.state});
+  final bool active;
+  const HistoryPage({super.key, required this.state, this.active = true});
   @override
   State<HistoryPage> createState() => _HistoryPageState();
 }
 
 class _HistoryPageState extends State<HistoryPage> {
   String query = '';
+  int visibleCount = 50;
   @override
-  Widget build(BuildContext context) {
-    final records = widget.state.consumptions
+  Widget build(BuildContext context) => ConsumptionQueryBuilder(
+    state: widget.state,
+    active: widget.active,
+    limit: query.isEmpty ? visibleCount + 1 : null,
+    builder: (context, records, loading, error) =>
+        _buildContent(context, records, loading, error),
+  );
+
+  Widget _buildContent(
+    BuildContext context,
+    List<Consumption> source,
+    bool loading,
+    Object? loadError,
+  ) {
+    final matches = source
         .where(
           (c) =>
               '${c.date} ${c.operatorName} ${sectorLabel(c.assignedSector ?? c.sector)} ${c.items.map((i) => i.description).join(' ')}'
                   .toLowerCase()
                   .contains(query.toLowerCase()),
         )
+        .take(visibleCount + 1)
         .toList();
+    final hasMore = matches.length > visibleCount;
+    final records = matches.take(visibleCount).toList();
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -33,13 +52,22 @@ class _HistoryPageState extends State<HistoryPage> {
             'Confira os lançamentos e acompanhe o envio.',
           ),
           TextField(
-            onChanged: (v) => setState(() => query = v),
+            onChanged: (v) => setState(() {
+              query = v;
+              visibleCount = 50;
+            }),
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
               hintText: 'Buscar data, responsável, setor ou produto',
             ),
           ),
           const SizedBox(height: 16),
+          SizedBox(
+            height: loading ? 4 : 0,
+            child: loading ? const LinearProgressIndicator() : null,
+          ),
+          if (loadError != null)
+            Text('Falha ao consultar consumos: $loadError'),
           Expanded(
             child: records.isEmpty
                 ? const EmptyState(
@@ -47,8 +75,14 @@ class _HistoryPageState extends State<HistoryPage> {
                     'Os consumos registrados aparecerão aqui.',
                   )
                 : ListView.builder(
-                    itemCount: records.length,
+                    itemCount: records.length + (hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index == records.length) {
+                        return TextButton(
+                          onPressed: () => setState(() => visibleCount += 50),
+                          child: const Text('Carregar mais'),
+                        );
+                      }
                       final c = records[index];
                       final pending = widget.state.pending.any(
                         (op) => op['entity_id'] == c.id,

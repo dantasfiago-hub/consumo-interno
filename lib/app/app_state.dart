@@ -31,6 +31,7 @@ class AppState extends ChangeNotifier {
   late final CloudService cloud = CloudService(db);
   List<Product> products = [];
   List<Consumption> consumptions = [];
+  int dataRevision = 0;
   List<Json> pending = [];
   List<Json> batches = [];
   bool _disposed = false;
@@ -100,7 +101,7 @@ class AppState extends ChangeNotifier {
             await db.setting('admin_password_required') == '1');
     if (adminProtected) await adminGuard.load((await db.setting('binding'))!);
     products = await catalog.load();
-    consumptions = await consumption.load();
+    consumptions = await consumption.load(limit: 50);
     pending = await db.pending();
     batches = canManage ? await db.records('batch') : [];
     if (!canManage) exportReceipts = [];
@@ -112,6 +113,7 @@ class AppState extends ChangeNotifier {
     lastSync = await db.setting('last_sync') ?? '';
 
     cloudConfigured = await cloud.configured;
+    dataRevision++;
     if (!_disposed) notifyListeners();
   }
 

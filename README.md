@@ -4,6 +4,16 @@ Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronizaçã
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
 
+## Correções de logout e histórico
+
+Logout legado remove os tokens antigo e por loja e bloqueia o acesso local sem
+apagar pendências. O histórico carrega 50 registros por vez com **Carregar mais**;
+a busca inclui registros antigos. Relatórios e exportações consultam os dados
+completos sob demanda, preservando totais e reservas além da primeira página.
+O SQLite recebe um índice automaticamente; não exige novo SQL no Supabase.
+Veja [as alterações](docs/CORRECOES_LOGOUT_HISTORICO.md) e o
+[guia de configuração local](config/README.md).
+
 ## Administração de aparelhos por setor
 
 Administração → Aparelhos atualiza a lista ao abrir e permite filtrar todos os setores ou Administração/Horti Fruti/Cozinha/Padaria. Mostra identificação, ativação e número de vínculos autorizados. **Excluir acesso** exige confirmação, revoga somente a máquina selecionada e preserva produtos, consumos e backups. O último administrador continua protegido; a própria máquina deve usar Sair ou trocar de setor. Aplique [011_admin_device_listing.sql](supabase/migrations/011_admin_device_listing.sql) após 010 para os metadados e recompile. [Guia](docs/GESTAO_APARELHOS.md).

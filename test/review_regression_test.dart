@@ -16,11 +16,15 @@ class FailingReadDatabase extends LocalDatabase {
   bool failReads = false;
   FailingReadDatabase() : super(NativeDatabase.memory());
   @override
-  Future<List<Map<String, dynamic>>> records(String kind) {
-    if (failReads && kind == 'consumption') {
+  Future<List<Consumption>> consumptions({
+    String? sectorId,
+    int? limit,
+    int offset = 0,
+  }) {
+    if (failReads) {
       throw StateError('Falha de leitura posterior ao commit');
     }
-    return super.records(kind);
+    return super.consumptions(sectorId: sectorId, limit: limit, offset: offset);
   }
 }
 

@@ -85,8 +85,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       await widget.state.leaveForSetup();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     }
   }
@@ -272,9 +273,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   selected: selected == i,
-                                  selectedTileColor: Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer,
+                                  selectedTileColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primaryContainer,
                                   leading: Icon(icons[i]),
                                   title: Text(labels[i]),
                                   onTap: () => setState(() => selected = i),
@@ -286,9 +287,9 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                               child: Text(
                                 'Uso interno\nAndroid e Windows',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -303,13 +304,16 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
                           ? [
                               ProductsPage(state: s),
                               EntryPage(state: s),
-                              HistoryPage(state: s),
-                              ReportsPage(state: s),
-                              ExportsPage(state: s),
+                              HistoryPage(state: s, active: selected == 2),
+                              ReportsPage(state: s, active: selected == 3),
+                              ExportsPage(state: s, active: selected == 4),
                               SettingsPage(state: s),
                               AdministrationPage(state: s),
                             ]
-                          : [EntryPage(state: s), HistoryPage(state: s)],
+                          : [
+                              EntryPage(state: s),
+                              HistoryPage(state: s, active: selected == 1),
+                            ],
                     ),
                   ),
                 ],

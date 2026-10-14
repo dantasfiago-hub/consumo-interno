@@ -6,15 +6,24 @@ class ConsumptionController {
   final LocalDatabase db;
   final SessionController session;
   ConsumptionController(this.db, this.session);
-  Future<List<Consumption>> load() async =>
-      (await db.consumptions())
-          .where(
-            (c) =>
-                session.canManage ||
-                session.accessReady && c.sectorId == session.sectorId,
-          )
-          .toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  Future<List<Consumption>> load({
+    String? sectorId,
+    int? limit,
+    int offset = 0,
+  }) async {
+    if (!session.accessReady) return [];
+    if (!session.canManage &&
+        sectorId != null &&
+        sectorId != session.sectorId) {
+      return [];
+    }
+    return db.consumptions(
+      sectorId: session.canManage ? sectorId : session.sectorId,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
   bool canCancel(Consumption c) =>
       session.accessReady &&
       c.status == 'confirmed' &&

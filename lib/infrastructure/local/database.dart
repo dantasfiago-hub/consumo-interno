@@ -29,7 +29,7 @@ class LocalDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
   @override
   Iterable<TableInfo<Table, dynamic>> get allTables => [];
   @override
@@ -55,6 +55,7 @@ class LocalDatabase extends GeneratedDatabase {
       await customStatement(
         'CREATE TABLE incoming(kind TEXT NOT NULL,id TEXT NOT NULL,code TEXT,body TEXT NOT NULL,PRIMARY KEY(kind,id))',
       );
+      await _createConsumptionIndex();
     },
     onUpgrade: (_, from, to) async {
       if (from < 2) {
@@ -65,10 +66,15 @@ class LocalDatabase extends GeneratedDatabase {
           'CREATE TABLE IF NOT EXISTS incoming(kind TEXT NOT NULL,id TEXT NOT NULL,code TEXT,body TEXT NOT NULL,PRIMARY KEY(kind,id))',
         );
       }
+      if (from < 3) await _createConsumptionIndex();
     },
     beforeOpen: (_) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
+  );
+
+  Future<void> _createConsumptionIndex() => customStatement(
+    "CREATE INDEX consumption_history ON records(json_extract(body, '\$.created_at') DESC, id DESC) WHERE kind='consumption'",
   );
 
   Future<String?> setting(String key) async {
@@ -157,8 +163,74 @@ class LocalDatabase extends GeneratedDatabase {
     return images;
   }
 
-  Future<List<Consumption>> consumptions() async =>
-      (await records('consumption')).map(Consumption.fromJson).toList();
+  /// Unbounded reads are reserved for reports, backups and explicit searches.
+  Future<List<Consumption>> consumptions({
+    String? sectorId,
+    int? limit,
+    int offset = 0,
+  }) async {
+    if (limit != null && limit < 1 || offset < 0) {
+      throw ArgumentError('Paginação inválida.');
+    }
+    if (sectorId != null && !sectors.containsKey(sectorId)) {
+      throw ArgumentError.value(sectorId, 'sectorId', 'Setor inválido.');
+    }
+    final variables = <Variable>[];
+    var condition = '';
+    if (sectorId != null) {
+      // Preserve the legacy display-name fallback used by Consumption.sectorId.
+      var legacy = "lower(json_extract(body, '\$.sector'))";
+      for (final whitespace in [
+        ' ',
+        '\t',
+        '\n',
+        '\r',
+        '\f',
+        '\u000b',
+        '\u00a0',
+        '\u1680',
+        '\u2000',
+        '\u2001',
+        '\u2002',
+        '\u2003',
+        '\u2004',
+        '\u2005',
+        '\u2006',
+        '\u2007',
+        '\u2008',
+        '\u2009',
+        '\u200a',
+        '\u2028',
+        '\u2029',
+        '\u202f',
+        '\u205f',
+        '\u3000',
+        '\ufeff',
+        '_',
+        '-',
+      ]) {
+        legacy = "replace($legacy, '$whitespace', '')";
+      }
+      condition =
+          " AND coalesce(json_extract(body, '\$._sector_id'), $legacy)=?";
+      variables.add(Variable.withString(sectorId));
+    }
+    final pagination = limit != null || offset > 0 ? ' LIMIT ? OFFSET ?' : '';
+    if (pagination.isNotEmpty) {
+      variables.addAll([
+        Variable.withInt(limit ?? -1),
+        Variable.withInt(offset),
+      ]);
+    }
+    final rows = await customSelect(
+      "SELECT body FROM records WHERE kind='consumption'$condition ORDER BY json_extract(body, '\$.created_at') DESC, id DESC$pagination",
+      variables: variables,
+    ).get();
+    return rows
+        .map((r) => Consumption.fromJson(decodeObject(r.read<String>('body'))))
+        .toList();
+  }
+
   Future<void> _put(String kind, Json body) async {
     if (kind == 'product' && body['photo'] != null) {
       final hash = sha256.convert(base64Decode(body['photo'])).toString();
@@ -240,29 +312,32 @@ class LocalDatabase extends GeneratedDatabase {
     await _save('consumption', body, c.version);
   }
 
-  Future<void> _save(String kind, Json body, int expected) =>
-      transaction(() async {
-        final current = await record(kind, body['id']);
-        if ((current?['version'] ?? 0) != expected) {
-          throw StateError('Registro alterado. Reabra antes de salvar.');
-        }
-        if (kind == 'consumption' &&
-            expected > 0 &&
-            current?['_export_locked'] == true) {
-          throw StateError('Consumo protegido por exportação.');
-        }
-        if (body['version'] != expected + 1) {
-          throw StateError('Versão do registro inválida.');
-        }
-        await _put(kind, body);
-        if (kind == 'consumption' && expected == 0) {
-          await setSetting('operator', body['operator']);
-        }
-        await customStatement(
-          'INSERT INTO outbox(op_id,kind,entity_id,expected_version,body) VALUES(?,?,?,?,?)',
-          [uuid.v4(), kind, body['id'], expected, jsonEncode(body)],
-        );
-      });
+  Future<void> _save(
+    String kind,
+    Json body,
+    int expected,
+  ) => transaction(() async {
+    final current = await record(kind, body['id']);
+    if ((current?['version'] ?? 0) != expected) {
+      throw StateError('Registro alterado. Reabra antes de salvar.');
+    }
+    if (kind == 'consumption' &&
+        expected > 0 &&
+        current?['_export_locked'] == true) {
+      throw StateError('Consumo protegido por exportação.');
+    }
+    if (body['version'] != expected + 1) {
+      throw StateError('Versão do registro inválida.');
+    }
+    await _put(kind, body);
+    if (kind == 'consumption' && expected == 0) {
+      await setSetting('operator', body['operator']);
+    }
+    await customStatement(
+      'INSERT INTO outbox(op_id,kind,entity_id,expected_version,body) VALUES(?,?,?,?,?)',
+      [uuid.v4(), kind, body['id'], expected, jsonEncode(body)],
+    );
+  });
   Future<List<Json>> pending() async => (await customSelect(
     'SELECT * FROM outbox ORDER BY seq',
   ).get()).map((r) => r.data).toList();
@@ -353,26 +428,28 @@ class LocalDatabase extends GeneratedDatabase {
       );
     }
   });
-  Future<void> commitIncoming(String cursor, {String? operatorId}) =>
-      transaction(() async {
-        // Remove stale code indexes together, then merge all incoming records atomically.
-        // This also supports product code swaps whose changes arrived on different pages.
-        await customStatement(
-          'UPDATE records SET code=NULL WHERE kind=\'product\' AND EXISTS(SELECT 1 FROM incoming i WHERE i.kind=records.kind AND i.id=records.id) AND NOT EXISTS(SELECT 1 FROM outbox o WHERE o.kind=records.kind AND o.entity_id=records.id)',
-        );
-        await customStatement(
-          'INSERT INTO records(kind,id,code,body) SELECT i.kind,i.id,i.code,i.body FROM incoming i WHERE NOT EXISTS(SELECT 1 FROM outbox o WHERE o.kind=i.kind AND o.entity_id=i.id) ON CONFLICT(kind,id) DO UPDATE SET code=excluded.code,body=excluded.body',
-        );
-        if (operatorId != null) {
-          await customStatement('DELETE FROM records WHERE kind=\'batch\'');
-          await customStatement(
-            'DELETE FROM records WHERE kind=\'consumption\' AND json_extract(body,\'\$._owner\') IS NOT NULL AND json_extract(body,\'\$._owner\')<>? AND NOT EXISTS(SELECT 1 FROM outbox o WHERE o.kind=records.kind AND o.entity_id=records.id)',
-            [operatorId],
-          );
-        }
-        await setSetting('entity_cursor', cursor);
-        await clearIncoming();
-      });
+  Future<void> commitIncoming(
+    String cursor, {
+    String? operatorId,
+  }) => transaction(() async {
+    // Remove stale code indexes together, then merge all incoming records atomically.
+    // This also supports product code swaps whose changes arrived on different pages.
+    await customStatement(
+      'UPDATE records SET code=NULL WHERE kind=\'product\' AND EXISTS(SELECT 1 FROM incoming i WHERE i.kind=records.kind AND i.id=records.id) AND NOT EXISTS(SELECT 1 FROM outbox o WHERE o.kind=records.kind AND o.entity_id=records.id)',
+    );
+    await customStatement(
+      'INSERT INTO records(kind,id,code,body) SELECT i.kind,i.id,i.code,i.body FROM incoming i WHERE NOT EXISTS(SELECT 1 FROM outbox o WHERE o.kind=i.kind AND o.entity_id=i.id) ON CONFLICT(kind,id) DO UPDATE SET code=excluded.code,body=excluded.body',
+    );
+    if (operatorId != null) {
+      await customStatement('DELETE FROM records WHERE kind=\'batch\'');
+      await customStatement(
+        'DELETE FROM records WHERE kind=\'consumption\' AND json_extract(body,\'\$._owner\') IS NOT NULL AND json_extract(body,\'\$._owner\')<>? AND NOT EXISTS(SELECT 1 FROM outbox o WHERE o.kind=records.kind AND o.entity_id=records.id)',
+        [operatorId],
+      );
+    }
+    await setSetting('entity_cursor', cursor);
+    await clearIncoming();
+  });
   Future<void> resolveWithRemote(
     String kind,
     String id,
@@ -474,10 +551,9 @@ class LocalDatabase extends GeneratedDatabase {
   }
 
   Future<List<Json>> _backupImages() async {
-    final hashes = (await _backupRecords('product'))
-        .map((p) => p['photo_hash'])
-        .whereType<String>()
-        .toSet();
+    final hashes = (await _backupRecords(
+      'product',
+    )).map((p) => p['photo_hash']).whereType<String>().toSet();
     for (final archive in await _backupArchives()) {
       final body = decodeObject(archive['body']);
       final local = body['local'];

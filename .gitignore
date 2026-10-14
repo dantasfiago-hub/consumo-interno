@@ -27,4 +27,5 @@ windows/flutter/ephemeral/
 
 # Editable connection defaults used only when compiling
 config/connection.local.json
+config/connection.json
 

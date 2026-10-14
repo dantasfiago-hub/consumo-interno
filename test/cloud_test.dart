@@ -1,3 +1,4 @@
+import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +12,73 @@ import 'package:consumo_interno/features/exports/domain/export.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  for (final deviceMode in [false, true]) {
+    test(
+      'Logout ${deviceMode ? 'protege aparelho' : 'remove tokens sem apagar pendências'}',
+      () async {
+        const url = 'https://example.supabase.co';
+        const store = '11111111-1111-4111-8111-111111111111';
+        const user = '22222222-2222-4222-8222-222222222222';
+        final key =
+            'refresh_token:${sha256.convert(utf8.encode('$url|$store'))}';
+        FlutterSecureStorage.setMockInitialValues({
+          'other-store-token': 'preservar',
+        });
+        final db = LocalDatabase(NativeDatabase.memory());
+        var authCalls = 0;
+        final client = MockClient((request) async {
+          if (request.url.path.contains('/auth/')) {
+            authCalls++;
+            return http.Response(
+              jsonEncode({
+                'access_token': 'token',
+                'refresh_token': 'refresh',
+                'user': {'id': user},
+              }),
+              200,
+            );
+          }
+          return http.Response('[{"role":"admin"}]', 200);
+        });
+        final cloud = CloudService(db, client: client);
+        try {
+          await cloud.configure(url, 'public', store);
+          await cloud.login('ana@example.com', 'password');
+          await cloud.storage.write(key: 'refresh_token', value: 'legacy');
+          await db.saveProduct(
+            const Product(id: 'p', code: '1', description: 'Arroz', unit: 'UN'),
+          );
+          final pending = await db.pending();
+          if (deviceMode) {
+            await db.setSetting('device_mode', '1');
+            await expectLater(cloud.logout(), throwsA(isA<CloudException>()));
+            expect(await cloud.storage.read(key: key), 'refresh');
+            expect(await db.setting('access_verified'), '1');
+            await cloud.refresh();
+            expect(authCalls, 2);
+          } else {
+            await cloud.logout();
+            expect(await cloud.storage.read(key: key), isNull);
+            expect(await cloud.storage.read(key: 'refresh_token'), isNull);
+            expect(await db.setting('access_verified'), '0');
+            expect(cloud.userId, isNull);
+            await expectLater(cloud.refresh(), throwsA(isA<CloudException>()));
+            expect(authCalls, 1);
+          }
+          expect(
+            await cloud.storage.read(key: 'other-store-token'),
+            'preservar',
+          );
+          expect(await db.setting('binding'), '$url|$store|$user');
+          expect(await db.pending(), pending);
+          expect(await db.products(), hasLength(1));
+        } finally {
+          await db.close();
+          client.close();
+        }
+      },
+    );
+  }
   test(
     'Revogação confirmada invalida a permissão local em vez de manter acesso offline',
     () async {
