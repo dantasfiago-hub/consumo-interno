@@ -269,7 +269,6 @@ class _AdministrationPageState extends State<AdministrationPage> {
                             width: 220,
                             child: DropdownButtonFormField<String>(
                               isExpanded: true,
-                              isExpanded: true,
                               initialValue: c.sector,
                               decoration: const InputDecoration(
                                 labelText: 'Setor da auditoria',
@@ -593,7 +592,6 @@ class _AdministrationPageState extends State<AdministrationPage> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   isExpanded: true,
-                  isExpanded: true,
                   initialValue: role,
                   decoration: const InputDecoration(labelText: 'Papel'),
                   items: const [
@@ -610,7 +608,6 @@ class _AdministrationPageState extends State<AdministrationPage> {
                 ),
                 if (role == 'operator')
                   DropdownButtonFormField<String>(
-                    isExpanded: true,
                     isExpanded: true,
                     initialValue: sector,
                     decoration: const InputDecoration(labelText: 'Setor'),
