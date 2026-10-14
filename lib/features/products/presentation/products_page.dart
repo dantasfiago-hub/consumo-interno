@@ -15,7 +15,7 @@ class ProductsPage extends StatefulWidget {
 }
 
 class _ProductsPageState extends State<ProductsPage> {
-  String search = '', unit = '';
+  String search = '', unit = '', sectorFilter = '';
   bool showInactive = false, onlyFavorites = false;
   @override
   Widget build(BuildContext context) {
@@ -30,7 +30,11 @@ class _ProductsPageState extends State<ProductsPage> {
               '${p.code} ${p.description}'.toLowerCase().contains(
                 search.toLowerCase(),
               ) &&
-              (unit.isEmpty || p.unit == unit),
+              (unit.isEmpty || p.unit == unit) &&
+              (sectorFilter.isEmpty ||
+                  (sectorFilter == 'unassigned'
+                      ? p.sectorIds.isEmpty
+                      : p.sectorIds.contains(sectorFilter))),
         )
         .toList();
     return Padding(
@@ -59,8 +63,35 @@ class _ProductsPageState extends State<ProductsPage> {
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
+            runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              SizedBox(
+                width: 260,
+                child: DropdownButtonFormField<String>(
+                  key: const ValueKey('products-sector-filter'),
+                  initialValue: sectorFilter,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Setor'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: '',
+                      child: Text('Todos os setores'),
+                    ),
+                    for (final entry in sectors.entries)
+                      DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                    const DropdownMenuItem(
+                      value: 'unassigned',
+                      child: Text('Sem setor'),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => sectorFilter = value ?? ''),
+                ),
+              ),
               for (final u in ['', 'UN', 'KG'])
                 ChoiceChip(
                   label: Text(u.isEmpty ? 'Todos' : u),
@@ -84,7 +115,7 @@ class _ProductsPageState extends State<ProductsPage> {
             child: products.isEmpty
                 ? const EmptyState(
                     'Nenhum produto encontrado',
-                    'Cadastre os produtos e adicione fotos para facilitar a identificação.',
+                    'Ajuste os filtros ou cadastre um produto.',
                   )
                 : LayoutBuilder(
                     builder: (context, c) => GridView.builder(

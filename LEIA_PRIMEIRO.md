@@ -1,4 +1,4 @@
-# Instalação — Consumo Interno 1.7.4+15
+# Instalação — Consumo Interno 1.7.5+16
 
 Veja [o guia completo da versão 1.7](docs/ALTERACOES_1_7.md) para incorporar a conexão, ativar por QR e sair/trocar de setor. O fonte foi atualizado; os binários anteriores não incluem estas alterações.
 
@@ -7,6 +7,8 @@ A versão 1.7.3 define backups automáticos locais semanais: cópias automática
 A versão 1.7.1 permite somar nos campos do lançamento sem `=` (ex.: `10+20+5`). Não exige nova migração de banco. Veja docs/ALTERACOES_1_7_1.md e recompile os aparelhos.
 
 A versão 1.7.4 adiciona Alterar tema no topo, disponível para todos os setores. Escolha Claro, Escuro ou Automático. Não exige SQL; recompile os aparelhos.
+
+A versão 1.7.5 adiciona filtro por setor na tela Produtos do administrador. Não exige SQL; atualize e recompile os aparelhos. Veja docs/ALTERACOES_1_7_5.md.
 
 ## Supabase existente
 
