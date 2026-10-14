@@ -27,3 +27,7 @@ Executado: `dart run tools/verify_report_grouping.dart`, com verificações de s
 A atualização da aplicação explícita dos filtros foi revisada e formatada; a interação da interface não foi executada neste ambiente.
 
 Correção da saída do histórico completo: fonte revisado e formatado; não houve execução da interface Flutter.
+
+## Aplicar sem filtros
+
+Aplicar filtros sem critérios encerra o histórico completo e oculta registros, totais e exportações, voltando à orientação inicial. A situação padrão Confirmados, ou Todos, sozinha não conta como pesquisa. Período, código/descrição, setor, unidade, limites de valor (inclusive zero) ou situação Cancelados contam como critérios. Para consultar todos os registros, use Exibir histórico completo. Esse comportamento altera apenas a visualização; não apaga dados. Fonte formatado e revisado; interação Flutter não executada.

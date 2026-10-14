@@ -25,6 +25,17 @@ class _ReportsPageState extends State<ReportsPage> {
   bool grouped = false, busy = false;
   String amountError = '';
   final fieldErrors = <String, String>{};
+  // The default Confirmados selection alone is not an explicit search.
+  bool get hasFilters =>
+      filter.from != null ||
+      filter.to != null ||
+      filter.query.trim().isNotEmpty ||
+      filter.sector.trim().isNotEmpty ||
+      filter.operatorName.trim().isNotEmpty ||
+      filter.unit.isNotEmpty ||
+      filter.minCents != null ||
+      filter.maxCents != null ||
+      filter.status == 'cancelled';
   @override
   Widget build(BuildContext context) {
     if (!widget.state.canManage) {
@@ -178,7 +189,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     ? null
                     : () => setState(() {
                         fullHistory = false;
-                        resultsVisible = true;
+                        resultsVisible = hasFilters;
                       }),
                 icon: const Icon(Icons.filter_alt_outlined),
                 label: const Text('Aplicar filtros'),
