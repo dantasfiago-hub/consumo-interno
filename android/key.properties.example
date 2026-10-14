@@ -1,0 +1,6 @@
+# Copie para android/key.properties e preencha os dados reais do kit privado.
+# Este exemplo não contém credenciais e não serve para assinar um APK.
+storeFile=signing/release-keystore.p12
+storePassword=SUBSTITUA_PELA_SENHA_REAL
+keyAlias=SUBSTITUA_PELO_ALIAS_REAL
+keyPassword=SUBSTITUA_PELA_SENHA_REAL

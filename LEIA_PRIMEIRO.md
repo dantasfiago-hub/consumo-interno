@@ -1,0 +1,48 @@
+# Atualização: administração de aparelhos
+
+Execute `supabase/migrations/011_admin_device_listing.sql` depois de 010 e recompile o aplicativo. A migração amplia a consulta administrativa de aparelhos, sem apagar vínculos ou registros. Consulte [GESTAO_APARELHOS.md](docs/GESTAO_APARELHOS.md). Para uma instalação nova, inclua também 011 após a sequência indicada abaixo.
+
+# Instalação — Consumo Interno 1.7.6+17
+
+Veja [o guia completo da versão 1.7](docs/ALTERACOES_1_7.md) para incorporar a conexão, ativar por QR e sair/trocar de setor. O fonte foi atualizado; os binários anteriores não incluem estas alterações.
+
+O intervalo automático local continua semanal, como definido na versão 1.7.3. A versão atual mantém até quatro cópias locais; a retenção remota de duas cópias exige 010. Veja docs/ALTERACOES_1_7_6.md.
+
+A versão 1.7.1 permite somar nos campos do lançamento sem `=` (ex.: `10+20+5`). Não exige nova migração de banco. Veja docs/ALTERACOES_1_7_1.md e recompile os aparelhos.
+
+A versão 1.7.4 adiciona Alterar tema no topo, disponível para todos os setores. Escolha Claro, Escuro ou Automático. Não exige SQL; recompile os aparelhos.
+
+A versão 1.7.5 adiciona filtro por setor na tela Produtos do administrador. Não exige SQL; atualize e recompile os aparelhos. Veja docs/ALTERACOES_1_7_5.md.
+
+A versão 1.7.6 limita os backups a quatro locais e dois remotos por aparelho. Aplique 010 após 009; a migração remove as cópias remotas excedentes e preserva as duas mais recentes. Recompile os aparelhos; a próxima cópia local bem-sucedida faz a limpeza local. Veja docs/ALTERACOES_1_7_6.md.
+
+## Supabase existente
+
+Se já aplicou 009, execute somente `supabase/migrations/010_backup_retention.sql` no SQL Editor. Se a última foi 008, execute 009 e 010; se foi 007, execute 008 a 010 em ordem. Não reaplique schema.sql nem setup_sector_devices.sql na loja existente.
+
+## Supabase novo
+
+1. Crie o projeto e habilite Authentication → Allow anonymous sign-ins.
+2. Execute schema.sql e todas as migrações 002 a 010, nessa ordem.
+3. Execute uma única vez setup_sector_devices.sql, alterando o nome da loja. Guarde o UUID e os códigos iniciais de uso único, válidos por 24 horas.
+4. Ative o aparelho administrativo. Sem configuração incorporada, preencha URL HTTPS, chave pública e UUID da loja, junto com o código administrativo. Defina a senha local.
+5. Na administração, gere códigos/QRs para os demais aparelhos. Cada aparelho tem um código próprio; pode haver várias máquinas por setor e vários administradores.
+
+Não é necessário criar funcionários ou e-mails. O Supabase cria identidades técnicas anônimas. Não apague essas identidades enquanto os aparelhos dependerem delas. Não use service_role ou sb_secret_ no aplicativo.
+
+## Atualizar e compilar
+
+```text
+git pull origin main
+flutter pub get
+flutter analyze
+flutter test
+```
+
+Para deixar a conexão incorporada, configure `config/connection.local.json` e use `--dart-define-from-file=config/connection.local.json` ao compilar. O modelo está em config/connection.example.json. Android release exige o kit de assinatura privado existente; Windows exige Flutter e Visual Studio C++ no Windows. A pasta supabase pode permanecer no projeto; os SQL precisam ser executados separadamente na nuvem.
+
+Os setores continuam acessando apenas lançamento/cancelamento e seus produtos. A exportação administrativa reúne registros sincronizados por setor, ignorando os já reservados/exportados. Cozinha/Padaria exportam código e quantidade; Horti Fruti mantém os quatro campos. Sincronize todas as máquinas antes de exportar.
+
+Para trocar de setor/loja, use Sair ou trocar de setor e um novo código autorizado. A saída exige sincronização concluída e backup local. Os dados antigos permanecem na nuvem e na cópia local; os rascunhos ainda não lançados são descartados com confirmação. Não apague banco ou credenciais para contornar pendências.
+
+Não foi aplicado SQL à loja nem compilado um novo APK/EXE nesta entrega. As limitações de validação estão registradas no guia 1.7.

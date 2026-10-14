@@ -1,0 +1,48 @@
+import {PGlite} from '@electric-sql/pglite';
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {randomUUID,createHash} from 'node:crypto';
+const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create schema auth;
+create table auth.users(id uuid primary key,email text);
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;`);
+for(const f of ['schema.sql','migrations/002_exports_v2.sql','migrations/003_sector_access.sql','migrations/004_operations_admin_media.sql','migrations/005_review_fixes.sql','migrations/006_sector_export_quantity.sql','migrations/007_sector_devices.sql','migrations/008_multiple_sector_devices.sql','migrations/009_activation_and_scope_changes.sql','migrations/010_backup_retention.sql','migrations/011_admin_device_listing.sql']) {
+ await db.exec(fs.readFileSync(new URL('../supabase/'+f,import.meta.url),'utf8'));
+}
+const store=randomUUID(),other=randomUUID(),admin=randomUUID(),a=randomUUID(),b=randomUUID(),stranger=randomUUID(),device=randomUUID();
+for(const s of [store,other])await db.query('insert into stores(id,name)values($1,$2)',[s,'Teste']);
+for(const u of [admin,a,b,stranger])await db.query('insert into auth.users(id)values($1)',[u]);
+for(const [s,u,role,sector]of [[store,admin,'admin',null],[store,a,'operator','cozinha'],[store,b,'operator','padaria'],[other,stranger,'admin',null]])await db.query('insert into memberships(store_id,user_id,role,sector)values($1,$2,$3,$4)',[s,u,role,sector]);
+await db.query("insert into sector_devices(store_id,slot,actor,device_id,code_hash,expires_at,activated_at)values($1,'cozinha',$2,$3,'test',now()+interval '1 day',now())",[store,a,device]);
+const login=async(u)=>db.exec(`set role authenticated;set request.jwt.claim.sub='${u}'`);
+const list=async(s)=>(await db.query('select admin_members($1) result',[s])).rows[0].result;
+await login(admin);
+const rows=await list(store);
+assert.equal(rows.length,3);
+const machine=rows.find(r=>r.user_id===a);
+assert.equal(machine.device_id,device);assert.ok(machine.activated_at);
+assert.equal(rows.find(r=>r.user_id===b).device_id,null);
+assert.ok(!JSON.stringify(rows).includes('code_hash'));
+await assert.rejects(()=>list(other));
+await login(a);await assert.rejects(()=>list(store));
+const payload=Buffer.from('backup preserved'),hash=createHash('sha256').update(payload).digest('hex');
+await db.query('select upload_device_backup($1,$2,$3,$4)',[store,device,hash,payload.toString('base64')]);
+await assert.rejects(()=>db.query("select admin_set_member($1,$2,'operator','padaria',false)",[store,b]));
+await login(admin);
+await db.query("select admin_set_member($1,$2,'operator','cozinha',false)",[store,a]);
+const remaining=await list(store);
+assert.equal(remaining.length,2);assert.ok(!remaining.some(r=>r.user_id===a));assert.ok(remaining.some(r=>r.user_id===b));
+await assert.rejects(()=>db.query("select admin_set_member($1,$2,'admin',null,false)",[store,admin]));
+await login(a);await assert.rejects(()=>list(store));
+await db.exec('reset role');
+assert.equal((await db.query('select count(*) n from device_backups where actor=$1',[a])).rows[0].n,1);
+assert.equal((await db.query('select count(*) n from auth.users where id=$1',[a])).rows[0].n,1);
+assert.equal((await db.query("select count(*) n from audit_log where action='membership_changed' and entity_id=$1",[a])).rows[0].n,1);
+await db.exec('set role anon');await assert.rejects(()=>list(store));
+await db.exec('reset role');
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/011_admin_device_listing.sql',import.meta.url),'utf8'));
+await login(admin);assert.equal((await list(store)).length,2);
+console.log('PASS: listing metadata, store isolation, admin-only access, individual revocation, last-admin protection, preservation of backups/Auth, audit and migration replay.');
+await db.close();
+

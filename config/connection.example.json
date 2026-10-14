@@ -1,0 +1,5 @@
+{
+  "DEFAULT_SUPABASE_URL": "https://SEU-PROJETO.supabase.co",
+  "DEFAULT_SUPABASE_PUBLIC_KEY": "sb_publishable_SUA_CHAVE_PUBLICA",
+  "DEFAULT_STORE_ID": "UUID_DA_LOJA"
+}
