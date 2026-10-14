@@ -10,7 +10,7 @@ Administração → Aparelhos atualiza a lista ao abrir e permite filtrar todos 
 
 ## Relatórios por produto
 
-A página abre sem resultados. Selecione os filtros e pressione **Aplicar filtros**, ou use **Exibir histórico completo** para limpar os filtros e consultar confirmados e cancelados de todos os períodos/setores. Alterar um filtro oculta os resultados até aplicar novamente. Em seguida, ative **Agrupar por produto** para somar quantidades e valores dos registros filtrados. A tela, o CSV e o PDF usam o mesmo agrupamento e mostram também a quantidade de lançamentos. UN e KG, produtos distintos e confirmados/cancelados são separados. Recompile para aplicar; não exige SQL. Veja [os detalhes](docs/RELATORIO_POR_PRODUTO.md).
+A página abre sem resultados. Selecione os filtros e pressione **Aplicar filtros**, ou use **Exibir histórico completo** para consultar confirmados e cancelados de todos os períodos/setores sem apagar os filtros preenchidos. **Aplicar filtros** encerra o modo histórico completo e usa novamente os filtros do formulário. Alterar um filtro oculta os resultados até aplicar novamente. Em seguida, ative **Agrupar por produto** para somar quantidades e valores dos registros filtrados. A tela, o CSV e o PDF usam o mesmo agrupamento e mostram também a quantidade de lançamentos. UN e KG, produtos distintos e confirmados/cancelados são separados. Recompile para aplicar; não exige SQL. Veja [os detalhes](docs/RELATORIO_POR_PRODUTO.md).
 
 ## Tema escuro — cinza mais claro e verde escuro
 

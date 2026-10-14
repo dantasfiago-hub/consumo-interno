@@ -19,9 +19,9 @@ class ReportsPage extends StatefulWidget {
 }
 
 class _ReportsPageState extends State<ReportsPage> {
-  ReportFilter filter = ReportFilter();
+  final filter = ReportFilter();
   bool resultsVisible = false;
-  int filterRevision = 0;
+  bool fullHistory = false;
   bool grouped = false, busy = false;
   String amountError = '';
   final fieldErrors = <String, String>{};
@@ -31,7 +31,10 @@ class _ReportsPageState extends State<ReportsPage> {
       return const Center(child: Text('Acesso exclusivo do administrador.'));
     }
     final rows = resultsVisible
-        ? reportRows(widget.state.consumptions, filter)
+        ? reportRows(
+            widget.state.consumptions,
+            fullHistory ? (ReportFilter()..status = '') : filter,
+          )
         : <ReportRow>[];
     final valid = rows.where((r) => r.consumption.status == 'confirmed');
     final total = valid.fold<int>(0, (n, r) => n + r.item.totalCents);
@@ -55,7 +58,6 @@ class _ReportsPageState extends State<ReportsPage> {
             'Combine filtros e exporte os resultados.',
           ),
           Card(
-            key: ValueKey(filterRevision),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Wrap(
@@ -85,6 +87,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       if (range != null && mounted) {
                         setState(() {
                           resultsVisible = false;
+                          fullHistory = false;
                           filter.from = range.start;
                           filter.to = range.end;
                         });
@@ -95,6 +98,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     TextButton(
                       onPressed: () => setState(() {
                         resultsVisible = false;
+                        fullHistory = false;
                         filter.from = null;
                         filter.to = null;
                       }),
@@ -120,6 +124,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       ],
                       onChanged: (v) => setState(() {
                         resultsVisible = false;
+                        fullHistory = false;
                         filter.status = v!;
                       }),
                     ),
@@ -136,6 +141,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       ],
                       onChanged: (v) => setState(() {
                         resultsVisible = false;
+                        fullHistory = false;
                         filter.unit = v!;
                       }),
                     ),
@@ -170,7 +176,10 @@ class _ReportsPageState extends State<ReportsPage> {
               FilledButton.icon(
                 onPressed: busy || amountError.isNotEmpty
                     ? null
-                    : () => setState(() => resultsVisible = true),
+                    : () => setState(() {
+                        fullHistory = false;
+                        resultsVisible = true;
+                      }),
                 icon: const Icon(Icons.filter_alt_outlined),
                 label: const Text('Aplicar filtros'),
               ),
@@ -178,10 +187,7 @@ class _ReportsPageState extends State<ReportsPage> {
                 onPressed: busy
                     ? null
                     : () => setState(() {
-                        filter = ReportFilter()..status = '';
-                        filterRevision++;
-                        fieldErrors.clear();
-                        amountError = '';
+                        fullHistory = true;
                         grouped = false;
                         resultsVisible = true;
                       }),
@@ -190,6 +196,13 @@ class _ReportsPageState extends State<ReportsPage> {
               ),
             ],
           ),
+          if (resultsVisible && fullHistory)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Text(
+                'Histórico completo. Pressione Aplicar filtros para voltar aos filtros preenchidos.',
+              ),
+            ),
           if (!resultsVisible)
             const Padding(
               padding: EdgeInsets.only(top: 24),
@@ -228,7 +241,10 @@ class _ReportsPageState extends State<ReportsPage> {
                   onSelected: (v) => setState(() => grouped = v),
                 ),
                 OutlinedButton.icon(
-                  onPressed: busy || rows.isEmpty || amountError.isNotEmpty
+                  onPressed:
+                      busy ||
+                          rows.isEmpty ||
+                          (!fullHistory && amountError.isNotEmpty)
                       ? null
                       : () => _export(rows, false, sync),
                   icon: Icon(Icons.table_view_outlined),
@@ -239,7 +255,10 @@ class _ReportsPageState extends State<ReportsPage> {
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: busy || rows.isEmpty || amountError.isNotEmpty
+                  onPressed:
+                      busy ||
+                          rows.isEmpty ||
+                          (!fullHistory && amountError.isNotEmpty)
                       ? null
                       : () => _export(rows, true, sync),
                   icon: Icon(Icons.picture_as_pdf_outlined),
@@ -296,6 +315,7 @@ class _ReportsPageState extends State<ReportsPage> {
       onChanged: (v) {
         setState(() {
           resultsVisible = false;
+          fullHistory = false;
           try {
             update(v);
             fieldErrors.remove(label);

@@ -4,7 +4,7 @@
 
 Na administração, abra Relatórios: inicialmente só os controles de consulta são exibidos, sem totais, registros ou botões de exportação. Selecione período, setor, produto, unidade e situação, e pressione **Aplicar filtros**. Ao editar qualquer filtro, os resultados ficam ocultos até aplicar novamente; valores inválidos bloqueiam a aplicação.
 
-**Exibir histórico completo** limpa todos os filtros e erros, seleciona todas as situações (confirmados e cancelados), todos os setores e unidades e todo o período, e abre o histórico detalhado. Os controles visuais são reinicializados para refletir a consulta completa. Totais de consumo válido continuam excluindo cancelados. Para somar por produto, ative **Agrupar por produto** depois de consultar. Cada linha mostra código, descrição, quantidade total, unidade, valor total e número de lançamentos. Os botões CSV/PDF acompanham o modo selecionado. Desative o agrupamento para retornar ao detalhamento.
+**Exibir histórico completo** abre uma consulta sem restrições de período, setor, unidade ou situação, incluindo confirmados e cancelados. Os filtros preenchidos e seus erros de validação são preservados no formulário. A indicação Histórico completo aparece enquanto esse modo está ativo. **Aplicar filtros** desativa esse modo e retorna aos filtros preenchidos; filtros inválidos devem ser corrigidos antes de aplicar. CSV/PDF seguem a consulta exibida, mesmo que o formulário preservado tenha erros durante o modo completo. Totais de consumo válido continuam excluindo cancelados. Para somar por produto, ative **Agrupar por produto** depois de consultar. Cada linha mostra código, descrição, quantidade total, unidade, valor total e número de lançamentos. Os botões CSV/PDF acompanham o modo selecionado. Desative o agrupamento para retornar ao detalhamento.
 
 ## Regras
 
@@ -25,3 +25,5 @@ Atualize o código e recompile. Não exige migração Supabase. Nenhum APK/EXE n
 Executado: `dart run tools/verify_report_grouping.dart`, com verificações de somas, filtros, unidades, cancelamentos, ordenação e CSV. Análise estática do domínio e desse verificador sem problemas. Fontes Dart formatados. A interface Flutter e a geração PDF não foram executadas neste ambiente.
 
 A atualização da aplicação explícita dos filtros foi revisada e formatada; a interação da interface não foi executada neste ambiente.
+
+Correção da saída do histórico completo: fonte revisado e formatado; não houve execução da interface Flutter.
