@@ -36,7 +36,7 @@ class QuantityFields extends StatelessWidget {
       }
       void step(int delta) {
         if (number == null) return;
-        final next = (number! + delta).clamp(0, maximum).toString();
+        final next = (number + delta).clamp(0, maximum).toString();
         controller.value = TextEditingValue(
           text: next,
           selection: TextSelection.collapsed(offset: next.length),

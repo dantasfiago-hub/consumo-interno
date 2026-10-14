@@ -27,6 +27,9 @@ assert.equal((await db.query('select count(*) n from device_backups where store_
 await upload(store,d1,'new-4');
 assert.equal((await db.query('select count(*) n from device_backups where store_id=$1 and actor=$2 and device_id=$3',[store,a,d1])).rows[0].n,2);
 await assert.rejects(()=>db.query('select upload_device_backup($1,$2,$3,$4)',[store,d1,'invalid',payload('x').body]));
+await assert.rejects(()=>db.query('select upload_device_backup($1,$2,$3,$4)',[store,d1,'invalid','%%%']));
+await assert.rejects(()=>upload(store,d1,'x'.repeat(20971521)));
+assert.equal((await db.query('select count(*) n from device_backups where store_id=$1 and actor=$2 and device_id=$3',[store,a,d1])).rows[0].n,2);
 await login(unauthorized);await assert.rejects(()=>upload(store,d1,'forbidden'));
 await db.exec('reset role;set role anon');await assert.rejects(()=>upload(store,d1,'anonymous'));
 await db.exec('reset role');await db.exec(sql);

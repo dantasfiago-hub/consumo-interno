@@ -13,14 +13,19 @@ import '../../../infrastructure/local/database.dart';
 class BackupController {
   final LocalDatabase db;
   final Future<Directory> Function() defaultDirectory;
+  final DateTime Function() now;
   Future<void>? _running;
   String error = '', lastBackup = '';
-  BackupController(this.db, {Future<Directory> Function()? directory})
-    : defaultDirectory = directory ?? getApplicationSupportDirectory;
+  BackupController(
+    this.db, {
+    Future<Directory> Function()? directory,
+    DateTime Function()? clock,
+  }) : defaultDirectory = directory ?? getApplicationSupportDirectory,
+       now = clock ?? DateTime.now;
   Future<void> snapshot({bool force = false, bool required = false}) async {
     if (_running != null) {
       await _running;
-      if (force) await snapshot(force: true, required: required);
+      if (force || required) await snapshot(force: true, required: required);
       return;
     }
     await (_running = _snapshot(
@@ -30,14 +35,10 @@ class BackupController {
   }
 
   Future<void> _snapshot(bool force, bool required) async {
-    if (!required && await db.setting('auto_backup') == 'false') return;
+    if (!force && !required && await db.setting('auto_backup') == 'false') {
+      return;
+    }
     try {
-      final previous = DateTime.tryParse(await db.setting('backup_last') ?? '');
-      if (!force &&
-          previous != null &&
-          DateTime.now().difference(previous) < const Duration(days: 7)) {
-        return;
-      }
       final custom = await db.setting('backup_directory');
       var root = custom != null && custom.isNotEmpty
           ? Directory(custom)
@@ -51,6 +52,19 @@ class BackupController {
           ),
         );
       }
+      final scope = p.normalize(root.absolute.path);
+      final previousScope = await db.setting('backup_last_scope');
+      final previous = DateTime.tryParse(await db.setting('backup_last') ?? '');
+      final started = now().toUtc();
+      final elapsed = previous == null ? null : started.difference(previous);
+      if (!force &&
+          !required &&
+          (previousScope == null || previousScope == scope) &&
+          elapsed != null &&
+          !elapsed.isNegative &&
+          elapsed < const Duration(days: 7)) {
+        return;
+      }
       await root.create(recursive: true);
       final text = await db.backup();
       final envelope = jsonEncode({
@@ -58,8 +72,20 @@ class BackupController {
         'sha256': sha256.convert(utf8.encode(text)).toString(),
         'backup': text,
       });
-      final name =
-          'consumo_${DateTime.now().toUtc().microsecondsSinceEpoch}.json';
+      var stamp = started.microsecondsSinceEpoch;
+      // Keep names monotonic even after the system clock moves backwards.
+      await for (final file in root.list()) {
+        if (file is! File) continue;
+        final match = RegExp(r'^consumo_([0-9]+)\.json(?:\.tmp)?$')
+            .firstMatch(p.basename(file.path));
+        final existing = match == null ? null : int.tryParse(match.group(1)!);
+        if (existing != null && existing >= stamp) stamp = existing + 1;
+      }
+      while (await File(p.join(root.path, 'consumo_$stamp.json')).exists() ||
+          await File(p.join(root.path, 'consumo_$stamp.json.tmp')).exists()) {
+        stamp++;
+      }
+      final name = 'consumo_$stamp.json';
       final temp = File(p.join(root.path, '$name.tmp'));
       await temp.writeAsString(envelope, flush: true);
       await temp.rename(p.join(root.path, name));
@@ -68,8 +94,7 @@ class BackupController {
           .where(
             (f) =>
                 f is File &&
-                p.basename(f.path).startsWith('consumo_') &&
-                f.path.endsWith('.json'),
+                RegExp(r'^consumo_[0-9]+\.json$').hasMatch(p.basename(f.path)),
           )
           .cast<File>()
           .toList();
@@ -77,9 +102,10 @@ class BackupController {
       for (final f in files.skip(4)) {
         await f.delete();
       }
-      lastBackup = DateTime.now().toUtc().toIso8601String();
+      lastBackup = now().toUtc().toIso8601String();
       error = '';
       await db.setSetting('backup_last', lastBackup);
+      await db.setSetting('backup_last_scope', scope);
       await db.setSetting('backup_error', '');
     } catch (e) {
       error = 'Falha no backup automático: $e';

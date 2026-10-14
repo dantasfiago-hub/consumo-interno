@@ -8,6 +8,53 @@ import 'package:consumo_interno/infrastructure/local/database.dart';
 import 'package:consumo_interno/features/settings/presentation/appearance_card.dart';
 
 void main() {
+  for (final sector in ['hortifruti', 'cozinha', 'padaria']) {
+    for (final width in [390.0, 1280.0]) {
+      testWidgets('Setor $sector altera tema sem ampliar acesso em $width', (
+        tester,
+      ) async {
+        final db = LocalDatabase(NativeDatabase.memory());
+        final state = AppState(db);
+        await db.setSetting('role', 'operator');
+        await db.setSetting('sector', sector);
+        await db.setSetting('access_verified', '1');
+        await db.setSetting('auto_backup', 'false');
+        await state.load();
+        await tester.binding.setSurfaceSize(Size(width, 900));
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(() async {
+          state.dispose();
+          await db.close();
+          await tester.binding.setSurfaceSize(null);
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+        await tester.pumpWidget(ConsumptionApp(state: state));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('change-theme')), findsOneWidget);
+        expect(find.text('Administração'), findsNothing);
+        expect(find.text('Configurações'), findsNothing);
+        final fields = find.byType(TextField);
+        expect(fields, findsWidgets);
+        await tester.enterText(fields.first, 'Rascunho preservado');
+        await tester.tap(find.byKey(const ValueKey('change-theme')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('theme-selector')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Escuro').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Fechar'));
+        await tester.pumpAndSettle();
+        expect(state.appearance.mode, ThemeMode.dark);
+        expect(find.text('Rascunho preservado'), findsOneWidget);
+        expect(state.canManage, isFalse);
+        expect(await db.pending(), isEmpty);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+    }
+  }
   test('Preferência persiste sem gerar pendência de sincronização', () async {
     final db = LocalDatabase(NativeDatabase.memory());
     final state = AppState(db);

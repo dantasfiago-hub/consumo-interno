@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -66,10 +67,7 @@ void main() {
           });
           await db.setSetting('role', 'admin');
           await db.setSetting('access_verified', '1');
-          await db.setSetting(
-            'auto_backup',
-            'false',
-          ); // Disk backup is covered separately with a real temporary directory.
+          await db.setSetting('auto_backup', 'false'); // Disk backup is covered separately with a real temporary directory.
           await state.load();
           await state.appearance.setMode(mode);
           final root = GlobalKey();
@@ -134,9 +132,9 @@ void main() {
           await tester.pumpAndSettle();
           await tester.tap(find.widgetWithText(ListTile, 'Carne bovina'));
           await tester.pumpAndSettle();
-          await tester.enterText(field('Quilogramas (kg)'), '2');
-          await tester.enterText(field('Gramas (g)'), '350');
-          await tester.enterText(field('Valor total (R\$)'), '70,50');
+          await tester.enterText(field('Quilogramas (kg)'), '1+1');
+          await tester.enterText(field('Gramas (g)'), '200+150');
+          await tester.enterText(field('Valor total (R\$)'), '30,10+40.40');
           await tester.pumpAndSettle();
           await renderPreview(
             tester,
@@ -184,22 +182,61 @@ void main() {
           await tester.tap(find.text('Relatórios'));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
+          expect(
+            find.text('Aplique os filtros para consultar'),
+            findsOneWidget,
+          );
+          expect(find.text('Exportar CSV detalhado'), findsNothing);
+          await tester.ensureVisible(find.text('Exibir histórico completo'));
+          await tester.tap(find.text('Exibir histórico completo'));
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('Histórico completo. Pressione'),
+            findsOneWidget,
+          );
           await tester.ensureVisible(field('Total mínimo (R\$)'));
           await tester.enterText(field('Total mínimo (R\$)'), 'errado');
-          await tester.enterText(field('Setor'), '');
           await tester.pumpAndSettle();
+          final applyFinder = find.widgetWithText(
+            FilledButton,
+            'Aplicar filtros',
+          );
+          expect(tester.widget<FilledButton>(applyFinder).onPressed, isNull);
+          expect(find.text('Exportar CSV detalhado'), findsNothing);
+          await tester.enterText(field('Total mínimo (R\$)'), '0');
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(applyFinder);
+          await tester.tap(applyFinder);
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('Histórico completo. Pressione'),
+            findsNothing,
+          );
           final exportFinder = find.ancestor(
             of: find.text('Exportar CSV detalhado'),
             matching: find.byWidgetPredicate((w) => w is OutlinedButton),
           );
-          final export = tester.widget<OutlinedButton>(exportFinder);
-          expect(export.onPressed, isNull);
-          await tester.enterText(field('Total mínimo (R\$)'), '0');
-          await tester.pumpAndSettle();
           expect(
             tester.widget<OutlinedButton>(exportFinder).onPressed,
             isNotNull,
           );
+          await tester.ensureVisible(field('Total mínimo (R\$)'));
+          await tester.enterText(field('Total mínimo (R\$)'), '');
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(applyFinder);
+          await tester.tap(applyFinder);
+          await tester.pumpAndSettle();
+          expect(
+            find.text('Aplique os filtros para consultar'),
+            findsOneWidget,
+          );
+          expect(find.text('Exportar CSV detalhado'), findsNothing);
+          await tester.ensureVisible(field('Total mínimo (R\$)'));
+          await tester.enterText(field('Total mínimo (R\$)'), '0');
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(applyFinder);
+          await tester.tap(applyFinder);
+          await tester.pumpAndSettle();
           await renderPreview(
             tester,
             root,
