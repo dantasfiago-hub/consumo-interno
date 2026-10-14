@@ -126,6 +126,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: deviceSector,
                         decoration: const InputDecoration(
                           labelText: 'Setor dos aparelhos',
@@ -267,6 +268,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
                           SizedBox(
                             width: 220,
                             child: DropdownButtonFormField<String>(
+                              isExpanded: true,
                               isExpanded: true,
                               initialValue: c.sector,
                               decoration: const InputDecoration(
@@ -458,6 +460,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: selectedSector,
                   decoration: const InputDecoration(labelText: 'Setor'),
                   items: {'admin': 'Administração', ...sectors}.entries
@@ -590,6 +593,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   isExpanded: true,
+                  isExpanded: true,
                   initialValue: role,
                   decoration: const InputDecoration(labelText: 'Papel'),
                   items: const [
@@ -606,6 +610,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
                 ),
                 if (role == 'operator')
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     isExpanded: true,
                     initialValue: sector,
                     decoration: const InputDecoration(labelText: 'Setor'),

@@ -211,9 +211,9 @@ void main() {
             find.textContaining('Histórico completo. Pressione'),
             findsNothing,
           );
-          final exportFinder = find.widgetWithText(
-            OutlinedButton,
-            'Exportar CSV detalhado',
+          final exportFinder = find.ancestor(
+            of: find.text('Exportar CSV detalhado'),
+            matching: find.byWidgetPredicate((w) => w is OutlinedButton),
           );
           expect(
             tester.widget<OutlinedButton>(exportFinder).onPressed,
