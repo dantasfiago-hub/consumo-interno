@@ -645,6 +645,9 @@ class LocalDatabase extends GeneratedDatabase {
       if (data['operator'] != null) {
         await setSetting('operator', data['operator']);
       }
+      // Restored data needs a fresh local snapshot, even inside the weekly window.
+      await removeSetting('backup_last');
+      await removeSetting('backup_last_scope');
       // New device ID: restored installation is a distinct device. Operation IDs remain unchanged.
     });
   }

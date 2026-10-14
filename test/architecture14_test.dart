@@ -15,7 +15,7 @@ import 'package:consumo_interno/infrastructure/local/database.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
-    'Backup automático retém 14 cópias e restaura com verificação de integridade',
+    'Backup automático retém 4 cópias e restaura com verificação de integridade',
     () async {
       final dir = await Directory.systemTemp.createTemp('backup14');
       final db = LocalDatabase(NativeDatabase.memory()),
@@ -30,7 +30,7 @@ void main() {
           '${dir.path}/backups',
         ).list().where((f) => f.path.endsWith('.json')).cast<File>().toList();
         files.sort((a, b) => a.path.compareTo(b.path));
-        expect(files.length, 14);
+        expect(files.length, 4);
         final text = await files.last.readAsString();
         await restored.restore(text);
         expect(await restored.setting('favorites'), '["f15"]');

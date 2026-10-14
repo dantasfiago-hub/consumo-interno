@@ -1,3 +1,5 @@
+// Standalone Dart script; relative imports keep it runnable without Flutter.
+// ignore_for_file: avoid_relative_lib_imports, avoid_print
 // Standalone Dart regression suite: dart run test/sum_expression_checks.dart.
 import '../lib/core/formatting/sum_expression.dart';
 
