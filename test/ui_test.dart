@@ -204,6 +204,7 @@ void main() {
           expect(tester.widget<FilledButton>(applyFinder).onPressed, isNull);
           expect(find.text('Exportar CSV detalhado'), findsNothing);
           await tester.enterText(field('Total mínimo (R\$)'), '0');
+          await tester.pumpAndSettle();
           await tester.ensureVisible(applyFinder);
           await tester.tap(applyFinder);
           await tester.pumpAndSettle();
@@ -221,6 +222,7 @@ void main() {
           );
           await tester.ensureVisible(field('Total mínimo (R\$)'));
           await tester.enterText(field('Total mínimo (R\$)'), '');
+          await tester.pumpAndSettle();
           await tester.ensureVisible(applyFinder);
           await tester.tap(applyFinder);
           await tester.pumpAndSettle();
@@ -231,6 +233,7 @@ void main() {
           expect(find.text('Exportar CSV detalhado'), findsNothing);
           await tester.ensureVisible(field('Total mínimo (R\$)'));
           await tester.enterText(field('Total mínimo (R\$)'), '0');
+          await tester.pumpAndSettle();
           await tester.ensureVisible(applyFinder);
           await tester.tap(applyFinder);
           await tester.pumpAndSettle();
