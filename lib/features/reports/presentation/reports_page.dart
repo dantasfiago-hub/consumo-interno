@@ -1,7 +1,10 @@
 import '../../../core/access/sectors.dart';
+
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../../../app/app_state.dart';
 import '../../../domain/models.dart';
 import '../../../core/files/file_service.dart';
@@ -37,23 +40,7 @@ class _ReportsPageState extends State<ReportsPage> {
     final sync = widget.state.lastSync.isEmpty
         ? 'Ainda não houve sincronização.'
         : 'Última sincronização: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(widget.state.lastSync))}';
-    final summaries = <String, Json>{};
-    for (final r in rows) {
-      final key = '${r.item.productId}|${r.item.unit}|${r.consumption.status}';
-      final s = summaries.putIfAbsent(
-        key,
-        () => {
-          'description': r.item.description,
-          'code': r.item.code,
-          'unit': r.item.unit,
-          'amount': 0,
-          'total': 0,
-          'status': r.consumption.status,
-        },
-      );
-      s['amount'] += r.item.amount;
-      s['total'] += r.item.totalCents;
-    }
+    final summaries = groupReportProducts(rows);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -195,14 +182,22 @@ class _ReportsPageState extends State<ReportsPage> {
                     ? null
                     : () => _export(rows, false, sync),
                 icon: Icon(Icons.table_view_outlined),
-                label: Text('Exportar CSV detalhado'),
+                label: Text(
+                  grouped
+                      ? 'Exportar CSV por produto'
+                      : 'Exportar CSV detalhado',
+                ),
               ),
               OutlinedButton.icon(
                 onPressed: busy || rows.isEmpty || amountError.isNotEmpty
                     ? null
                     : () => _export(rows, true, sync),
                 icon: Icon(Icons.picture_as_pdf_outlined),
-                label: Text('Exportar PDF detalhado'),
+                label: Text(
+                  grouped
+                      ? 'Exportar PDF por produto'
+                      : 'Exportar PDF detalhado',
+                ),
               ),
             ],
           ),
@@ -215,14 +210,14 @@ class _ReportsPageState extends State<ReportsPage> {
               'Altere os filtros ou registre um consumo.',
             ),
           if (grouped)
-            ...summaries.values.map(
+            ...summaries.map(
               (s) => Card(
                 child: ListTile(
-                  title: Text('${s['code']} · ${s['description']}'),
+                  title: Text('${s.code} · ${s.description}'),
                   subtitle: Text(
-                    '${quantity(s['amount'], s['unit'])} ${s['unit']} · ${s['status'] == 'confirmed' ? 'Confirmado' : 'Cancelado'}',
+                    '${quantity(s.amount, s.unit)} ${s.unit} · ${s.consumptionCount} lançamento(s) · ${s.status == 'confirmed' ? 'Confirmado' : 'Cancelado'}',
                   ),
-                  trailing: Text(money(s['total'])),
+                  trailing: Text(money(s.totalCents)),
                 ),
               ),
             )
@@ -298,17 +293,23 @@ class _ReportsPageState extends State<ReportsPage> {
     ),
   );
   Future<void> _export(List<ReportRow> rows, bool pdf, String sync) async {
+    final exportGrouped = grouped;
     setState(() => busy = true);
     try {
       final bytes = pdf
           ? await reportPdf(
               rows,
+              grouped: exportGrouped,
               synchronization:
                   '$sync Pendências: ${widget.state.pending.length}.',
             )
-          : utf8.encode(reportCsv(rows));
+          : utf8.encode(
+              exportGrouped
+                  ? reportProductsCsv(groupReportProducts(rows))
+                  : reportCsv(rows),
+            );
       final path = await saveBytes(
-        'consumos_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.${pdf ? 'pdf' : 'csv'}',
+        'consumos_${exportGrouped ? 'por_produto_' : ''}${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.${pdf ? 'pdf' : 'csv'}',
         bytes,
       );
       if (mounted && path != null) message(context, 'Arquivo exportado.');

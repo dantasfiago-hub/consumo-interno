@@ -1,13 +1,19 @@
 import '../../../core/access/sectors.dart';
+
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+
 import '../../../domain/models.dart';
 
 Future<Uint8List> reportPdf(
   List<ReportRow> rows, {
   required String synchronization,
+  bool grouped = false,
 }) async {
+  final summaries = grouped
+      ? groupReportProducts(rows)
+      : <ReportProductSummary>[];
   final document = pw.Document();
   final regular = pw.Font.ttf(
     await rootBundle.load('assets/fonts/Roboto-Regular.ttf'),
@@ -32,7 +38,9 @@ Future<Uint8List> reportPdf(
             style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
           ),
           pw.Text(
-            'Relatório de consumo interno',
+            grouped
+                ? 'Relatório de consumo por produto'
+                : 'Relatório de consumo interno',
             style: const pw.TextStyle(fontSize: 10),
           ),
           pw.Text(synchronization, style: const pw.TextStyle(fontSize: 9)),
@@ -45,42 +53,66 @@ Future<Uint8List> reportPdf(
       ),
       build: (_) => [
         pw.TableHelper.fromTextArray(
-          headers: [
-            'Data',
-            'Código',
-            'Produto',
-            'UN/KG',
-            'Quantidade',
-            'Total R\$',
-            'Setor',
-            'Responsável',
-            'Situação',
-          ],
+          headers: grouped
+              ? [
+                  'Código',
+                  'Produto',
+                  'UN/KG',
+                  'Quantidade total',
+                  'Total R\$',
+                  'Lançamentos',
+                  'Situação',
+                ]
+              : [
+                  'Data',
+                  'Código',
+                  'Produto',
+                  'UN/KG',
+                  'Quantidade',
+                  'Total R\$',
+                  'Setor',
+                  'Responsável',
+                  'Situação',
+                ],
           cellStyle: const pw.TextStyle(fontSize: 8),
           headerStyle: pw.TextStyle(
             fontSize: 9,
             fontWeight: pw.FontWeight.bold,
           ),
           headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
-          data: rows
-              .map(
-                (r) => [
-                  r.consumption.date,
-                  r.item.code,
-                  r.item.description,
-                  r.item.unit,
-                  quantity(r.item.amount, r.item.unit),
-                  money(r.item.totalCents),
-                  sectorLabel(
-                    r.consumption.assignedSector ?? r.consumption.sector,
-                  ),
-                  r.consumption.operatorName,
-                  r.consumption.status == 'confirmed'
-                      ? 'Confirmado'
-                      : 'Cancelado',
-                ],
-              )
-              .toList(),
+          data: grouped
+              ? summaries
+                    .map(
+                      (s) => [
+                        s.code,
+                        s.description,
+                        s.unit,
+                        quantity(s.amount, s.unit),
+                        money(s.totalCents),
+                        '${s.consumptionCount}',
+                        s.status == 'confirmed' ? 'Confirmado' : 'Cancelado',
+                      ],
+                    )
+                    .toList()
+              : rows
+                    .map(
+                      (r) => [
+                        r.consumption.date,
+                        r.item.code,
+                        r.item.description,
+                        r.item.unit,
+                        quantity(r.item.amount, r.item.unit),
+                        money(r.item.totalCents),
+                        sectorLabel(
+                          r.consumption.assignedSector ?? r.consumption.sector,
+                        ),
+                        r.consumption.operatorName,
+                        r.consumption.status == 'confirmed'
+                            ? 'Confirmado'
+                            : 'Cancelado',
+                      ],
+                    )
+                    .toList(),
         ),
         pw.SizedBox(height: 16),
         pw.Text('Total dos itens confirmados: ${money(total)}'),

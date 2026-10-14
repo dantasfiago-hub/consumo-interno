@@ -4,6 +4,10 @@ Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronizaçã
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
 
+## Relatórios por produto
+
+Em Relatórios, ative **Agrupar por produto** para somar quantidades e valores dos registros filtrados. A tela, o CSV e o PDF usam o mesmo agrupamento e mostram também a quantidade de lançamentos. UN e KG, produtos distintos e confirmados/cancelados são separados. Recompile para aplicar; não exige SQL. Veja [os detalhes](docs/RELATORIO_POR_PRODUTO.md).
+
 ## Tema escuro — cinza mais claro e verde escuro
 
 O tema escuro agora usa fundo cinza médio, cartões mais claros, campos cinza escuro e botões verde floresta com texto branco. Links e indicadores usam verde claro para preservar o contraste. A paleta central é aplicada a todos os setores e à administração. Recompile para aplicar; não exige SQL e não inclui novos APK/EXE. Veja [os detalhes](docs/TEMA_CINZA_VERDE.md).
