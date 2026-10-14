@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+
 import '../../../app/app_state.dart';
 import '../../../core/files/file_service.dart';
 import '../../../core/widgets/common.dart';
@@ -184,7 +186,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Backup automático: 14 cópias locais, criadas após alterações e diariamente enquanto o app está aberto. Até 7 cópias por aparelho na nuvem após sincronizar.',
+                        'Backup automático local: intervalo de 7 dias, durante o uso do aplicativo, mantendo até 4 cópias. Na nuvem: até 2 cópias por aparelho após sincronizar. Ativação, saída/troca de setor e cópias manuais podem criar backups locais adicionais.',
                       ),
                       FutureBuilder<List<String?>>(
                         future: Future.wait(
@@ -383,7 +385,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               const SizedBox(height: 16),
               Text(
-                'Versão 1.7.5 · Consumo interno e exportação para outro aplicativo.',
+                'Versão 1.7.6 · Consumo interno e exportação para outro aplicativo.',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -406,4 +408,3 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 }
-

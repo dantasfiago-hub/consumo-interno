@@ -1,8 +1,8 @@
-# Instalação — Consumo Interno 1.7.5+16
+# Instalação — Consumo Interno 1.7.6+17
 
 Veja [o guia completo da versão 1.7](docs/ALTERACOES_1_7.md) para incorporar a conexão, ativar por QR e sair/trocar de setor. O fonte foi atualizado; os binários anteriores não incluem estas alterações.
 
-A versão 1.7.3 define backups automáticos locais semanais: cópias automáticas respeitam sete dias, mantendo até 14 arquivos. Não exige nova migração; recompile os aparelhos. Veja docs/ALTERACOES_1_7_3.md.
+O intervalo automático local continua semanal, como definido na versão 1.7.3. A versão atual mantém até quatro cópias locais; a retenção remota de duas cópias exige 010. Veja docs/ALTERACOES_1_7_6.md.
 
 A versão 1.7.1 permite somar nos campos do lançamento sem `=` (ex.: `10+20+5`). Não exige nova migração de banco. Veja docs/ALTERACOES_1_7_1.md e recompile os aparelhos.
 
@@ -10,14 +10,16 @@ A versão 1.7.4 adiciona Alterar tema no topo, disponível para todos os setores
 
 A versão 1.7.5 adiciona filtro por setor na tela Produtos do administrador. Não exige SQL; atualize e recompile os aparelhos. Veja docs/ALTERACOES_1_7_5.md.
 
+A versão 1.7.6 limita os backups a quatro locais e dois remotos por aparelho. Aplique 010 após 009; a migração remove as cópias remotas excedentes e preserva as duas mais recentes. Recompile os aparelhos; a próxima cópia local bem-sucedida faz a limpeza local. Veja docs/ALTERACOES_1_7_6.md.
+
 ## Supabase existente
 
-Se já aplicou 008, execute somente `supabase/migrations/009_activation_and_scope_changes.sql` no SQL Editor. Se a última migração foi 007, execute 008 e depois 009. Não reaplique schema.sql nem setup_sector_devices.sql na loja existente.
+Se já aplicou 009, execute somente `supabase/migrations/010_backup_retention.sql` no SQL Editor. Se a última foi 008, execute 009 e 010; se foi 007, execute 008 a 010 em ordem. Não reaplique schema.sql nem setup_sector_devices.sql na loja existente.
 
 ## Supabase novo
 
 1. Crie o projeto e habilite Authentication → Allow anonymous sign-ins.
-2. Execute schema.sql e todas as migrações 002 a 009, nessa ordem.
+2. Execute schema.sql e todas as migrações 002 a 010, nessa ordem.
 3. Execute uma única vez setup_sector_devices.sql, alterando o nome da loja. Guarde o UUID e os códigos iniciais de uso único, válidos por 24 horas.
 4. Ative o aparelho administrativo. Sem configuração incorporada, preencha URL HTTPS, chave pública e UUID da loja, junto com o código administrativo. Defina a senha local.
 5. Na administração, gere códigos/QRs para os demais aparelhos. Cada aparelho tem um código próprio; pode haver várias máquinas por setor e vários administradores.

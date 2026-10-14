@@ -74,7 +74,7 @@ class BackupController {
           .cast<File>()
           .toList();
       files.sort((a, b) => b.path.compareTo(a.path));
-      for (final f in files.skip(14)) {
+      for (final f in files.skip(4)) {
         await f.delete();
       }
       lastBackup = DateTime.now().toUtc().toIso8601String();

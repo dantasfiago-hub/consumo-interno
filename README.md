@@ -1,8 +1,12 @@
-# Consumo Interno — 1.7.5+16
+# Consumo Interno — 1.7.6+17
 
 Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronização Supabase/PostgreSQL e exportação individual por setor para o VR Master. Não emite nota fiscal.
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
+
+## Atualização 1.7.6 — retenção de backups
+
+Mantém até quatro cópias locais por vínculo e duas cópias na nuvem por loja/identidade/aparelho. O intervalo automático local continua em sete dias; cópias forçadas permanecem. Execute [010_backup_retention.sql](supabase/migrations/010_backup_retention.sql) após 009 e recompile o aplicativo. A migração elimina as cópias remotas excedentes, preservando as duas mais recentes; a limpeza local ocorre após o próximo backup bem-sucedido. O texto de Configurações foi corrigido. Veja [o guia](docs/ALTERACOES_1_7_6.md).
 
 ## Atualização 1.7.5 — filtro de produtos por setor
 
@@ -34,7 +38,7 @@ Aplique 009 após 008. Leia [o guia 1.7](docs/ALTERACOES_1_7.md). Os valores rea
 
 Aplique [008_multiple_sector_devices.sql](supabase/migrations/008_multiple_sector_devices.sql) após 007. Cada novo código ativa uma máquina adicional, sem desconectar as anteriores. Os códigos valem 24 horas e são de uso único. Revogue uma máquina individualmente em Administração → Aparelhos. Produtos e consumos continuam restritos ao setor; sincronização, cancelamentos e exportações usam os dados compartilhados. Consulte [o guia da atualização](docs/ALTERACOES_1_6_2.md).
 
-Também inclui a correção de fotos WebP estáticas. Fonte 1.7.5+16; não foi gerado um novo APK ou EXE nesta alteração. O APK 1.6.1 citado abaixo é da entrega anterior.
+Também inclui a correção de fotos WebP estáticas. Fonte 1.7.6+17; não foi gerado um novo APK ou EXE nesta alteração. O APK 1.6.1 citado abaixo é da entrega anterior.
 
 ## Correção Android 1.6.1
 
@@ -46,7 +50,7 @@ O administrador ativa cada aparelho com um código de uso restrito ao setor. Dep
 
 Habilite Anonymous Sign-Ins no Supabase, aplique 007, 008 e 009 após 006 e siga [LEIA_PRIMEIRO.md](LEIA_PRIMEIRO.md). Loja nova pode usar `supabase/setup_sector_devices.sql` para gerar os quatro códigos iniciais. Não é necessário criar contas de funcionários: o Auth cria identidades técnicas automaticamente. Troca de aparelho deve preservar pendências antes de revogar o antigo.
 
-As exportações por setor, controles kg/gramas/UN e confirmações da 1.5 permanecem. Atualização do fonte: 1.7.5+16; APK anterior release 1.6.1+9 compilado e assinatura verificada. Não foi compilado EXE Windows nesta entrega.
+As exportações por setor, controles kg/gramas/UN e confirmações da 1.5 permanecem. Atualização do fonte: 1.7.6+17; APK anterior release 1.6.1+9 compilado e assinatura verificada. Não foi compilado EXE Windows nesta entrega.
 
 ## Implementação
 
@@ -74,7 +78,7 @@ Itens reservados/exportados não podem entrar em outro lote. O arquivo guarda by
 
 Fila e registro são gravados na mesma transação. UUIDs tornam reenvios idempotentes; versões detectam conflitos. O recebimento aplica páginas/cursor atomicamente. Revisões administrativas arquivam a tentativa original. Fotos usam SHA-256 e cache separado dos metadados. Permissões são verificadas no servidor e aplicadas também nos controladores locais.
 
-Backups locais mantêm 14 cópias por conta; remotos mantêm 7 por conta/dispositivo. Restauração verifica integridade, vínculo e permissões. Em instalação vazia, há recuperação remota autorizada antes da sincronização.
+Backups locais mantêm 4 cópias por vínculo; remotos mantêm 2 por loja/conta/dispositivo. Restauração verifica integridade, vínculo e permissões. Em instalação vazia, há recuperação remota autorizada antes da sincronização.
 
 ## Instalação e testes
 
@@ -91,7 +95,7 @@ npm test
 
 O ambiente de validação da 1.6.1 usa Flutter 3.47.5/Dart 3.13.4. O build Android release exige o kit privado de assinatura. O código ZIP exclui suas credenciais; não publique o kit. O Windows precisa ser compilado em Windows com Visual Studio C++.
 
-Nuvem nova: esquema base e 002 a 009, nessa ordem. Nuvem 1.6.2: somente 009. Nuvem 1.6/1.6.1: 008 e 009. Nuvem 1.5: 007 a 009. Nuvem 1.4.1: 006 a 009. Nuvem 1.4.0: 005 a 009. Não reaplique o esquema base. Configure loja/códigos pelo SQL e ative os aparelhos; Administração gera códigos dos setores. Não é necessário e-mail.
+Nuvem nova: esquema base e 002 a 010, nessa ordem. Nuvem com 009: somente 010. Nuvem 1.6.2: 009 e 010. Nuvem 1.6/1.6.1: 008 a 010. Nuvem 1.5: 007 a 010. Nuvem 1.4.1: 006 a 010. Nuvem 1.4.0: 005 a 010. Não reaplique o esquema base. Configure loja/códigos pelo SQL e ative os aparelhos; Administração gera códigos dos setores. Não é necessário e-mail.
 
 Consulte [arquitetura](docs/ARQUITETURA_MELHORIAS.md), [alterações](docs/ALTERACOES_1_6.md) e [validação](docs/VALIDACAO.md). Capturas são renderizadas pelos testes Flutter com dados fictícios, não fotos de execução em Windows/telefone físico.
 
