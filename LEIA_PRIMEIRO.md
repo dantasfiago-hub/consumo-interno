@@ -1,3 +1,7 @@
+# Atualização: administração de aparelhos
+
+Execute `supabase/migrations/011_admin_device_listing.sql` depois de 010 e recompile o aplicativo. A migração amplia a consulta administrativa de aparelhos, sem apagar vínculos ou registros. Consulte [GESTAO_APARELHOS.md](docs/GESTAO_APARELHOS.md). Para uma instalação nova, inclua também 011 após a sequência indicada abaixo.
+
 # Instalação — Consumo Interno 1.7.6+17
 
 Veja [o guia completo da versão 1.7](docs/ALTERACOES_1_7.md) para incorporar a conexão, ativar por QR e sair/trocar de setor. O fonte foi atualizado; os binários anteriores não incluem estas alterações.

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+
 import '../../../core/activation/qr_image_decoder.dart';
+
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter/services.dart';
 
@@ -25,15 +27,24 @@ class AdministrationPage extends StatefulWidget {
 class _AdministrationPageState extends State<AdministrationPage> {
   bool busy = false;
   String error = '';
+  String deviceSector = '';
   @override
   void initState() {
     super.initState();
-    widget.state.admin
-        .cached()
-        .then((_) {
-          if (mounted) setState(() {});
-        })
-        .catchError((_) {});
+    _loadDevices();
+  }
+
+  Future<void> _loadDevices() async {
+    try {
+      await widget.state.admin.cached();
+      if (!mounted) return;
+      setState(() {});
+      if (widget.state.cloudConfigured && widget.state.canManage) {
+        await run(widget.state.admin.refresh);
+      }
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    }
   }
 
   Future<void> run(Future<void> Function() action) async {
@@ -57,6 +68,15 @@ class _AdministrationPageState extends State<AdministrationPage> {
       return const Center(child: Text('Acesso administrativo obrigatório.'));
     }
     final c = s.admin;
+    final deviceMembers = c.members
+        .where(
+          (m) =>
+              deviceSector.isEmpty ||
+              (deviceSector == 'admin'
+                  ? m['role'] == 'admin'
+                  : m['sector'] == deviceSector),
+        )
+        .toList();
     return DefaultTabController(
       length: 4,
       child: Padding(
@@ -96,7 +116,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
                       Padding(
                         padding: const EdgeInsets.all(12),
                         child: Text(
-                          'Gere um código para cada máquina do setor. Os aparelhos compartilham os dados após sincronizar. Para substituir uma máquina, revogue somente o acesso dela abaixo e gere outro código.',
+                          'Consulte os aparelhos autorizados desta loja por setor. Excluir acesso remove somente o vínculo do aparelho, preservando produtos, consumos e backups. A revogação é feita na nuvem; um aparelho offline perceberá a mudança quando voltar a conectar.',
                         ),
                       ),
                       FilledButton.icon(
@@ -104,22 +124,77 @@ class _AdministrationPageState extends State<AdministrationPage> {
                         icon: const Icon(Icons.person_add_alt),
                         label: const Text('Gerar código de ativação'),
                       ),
-                      for (final m in c.members)
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: deviceSector,
+                        decoration: const InputDecoration(
+                          labelText: 'Setor dos aparelhos',
+                        ),
+                        items:
+                            {
+                                  '': 'Todos os setores',
+                                  'admin': 'Administração',
+                                  ...sectors,
+                                }.entries
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e.key,
+                                    child: Text(e.value),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) =>
+                            setState(() => deviceSector = value!),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          '${deviceMembers.length} aparelho(s) autorizado(s) · ${c.members.length} no total',
+                        ),
+                      ),
+                      if (deviceMembers.isEmpty)
+                        const ListTile(
+                          title: Text('Nenhum aparelho encontrado'),
+                          subtitle: Text(
+                            'Atualize a lista para consultar os vínculos na nuvem.',
+                          ),
+                        ),
+                      for (final m in deviceMembers)
                         Card(
                           child: ListTile(
+                            leading: Icon(
+                              m['role'] == 'admin'
+                                  ? Icons.admin_panel_settings_outlined
+                                  : Icons.devices_outlined,
+                            ),
                             title: Text(
                               m['role'] == 'admin'
-                                  ? 'Aparelho administrativo'
+                                  ? 'Administração'
                                   : sectorLabel(m['sector'] ?? ''),
                             ),
                             subtitle: Text(
-                              '${m['role'] == 'admin' ? 'Administrador' : sectorLabel(m['sector'] ?? '')}\n${m['user_id']}',
+                              'Aparelho: ${m['device_id'] ?? 'Vínculo legado, sem identificador'}\n'
+                              'Ativação: ${m['activated_at'] ?? 'Não informada'}\n'
+                              'Identidade: ${m['user_id']}${m['user_id'] == s.cloud.userId ? '\nEste aparelho' : ''}',
                             ),
-                            isThreeLine: true,
-                            trailing: IconButton(
-                              tooltip: 'Editar acesso',
-                              onPressed: busy ? null : () => member(m),
-                              icon: const Icon(Icons.edit_outlined),
+                            trailing: Wrap(
+                              children: [
+                                IconButton(
+                                  tooltip: 'Editar acesso',
+                                  onPressed: busy ? null : () => member(m),
+                                  icon: const Icon(Icons.edit_outlined),
+                                ),
+                                IconButton(
+                                  tooltip: m['user_id'] == s.cloud.userId
+                                      ? 'Use Sair ou trocar de setor neste aparelho'
+                                      : 'Excluir acesso do aparelho',
+                                  onPressed:
+                                      busy || m['user_id'] == s.cloud.userId
+                                      ? null
+                                      : () => removeDevice(m),
+                                  icon: const Icon(Icons.delete_outline),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -154,9 +229,8 @@ class _AdministrationPageState extends State<AdministrationPage> {
                               Padding(
                                 padding: const EdgeInsets.all(12),
                                 child: SelectableText(
-                                  const JsonEncoder.withIndent(
-                                    '  ',
-                                  ).convert(issue['snapshot']),
+                                  const JsonEncoder.withIndent('  ')
+                                      .convert(issue['snapshot']),
                                 ),
                               ),
                               if (![
@@ -263,9 +337,8 @@ class _AdministrationPageState extends State<AdministrationPage> {
                                   Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: SelectableText(
-                                      const JsonEncoder.withIndent(
-                                        '  ',
-                                      ).convert(a['detail']),
+                                      const JsonEncoder.withIndent('  ')
+                                          .convert(a['detail']),
                                     ),
                                   ),
                                 ],
@@ -281,7 +354,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
                       const Padding(
                         padding: EdgeInsets.all(12),
                         child: Text(
-                          'São mantidas até 7 cópias por conta/aparelho na nuvem. O aparelho também mantém 14 cópias locais. A recuperação automática só usa backups da conta autenticada.',
+                          'São mantidas até 2 cópias por conta/aparelho na nuvem e até 4 cópias locais por vínculo. A recuperação automática só usa backups da conta autenticada.',
                         ),
                       ),
                       if (c.backups.isEmpty)
@@ -323,6 +396,41 @@ class _AdministrationPageState extends State<AdministrationPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> removeDevice(Json existing) async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir acesso do aparelho?'),
+        content: Text(
+          'Setor: ${existing['role'] == 'admin' ? 'Administração' : sectorLabel(existing['sector'] ?? '')}\n'
+          'Aparelho: ${existing['device_id'] ?? existing['user_id']}\n\n'
+          'O aparelho perderá o acesso à nuvem. Produtos, consumos e backups serão preservados. '
+          'Sincronize ou guarde um backup das pendências locais antes de remover. '
+          'Para reconectar, gere um novo código de ativação.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Excluir acesso'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true || !mounted || !widget.state.canManage) return;
+    await run(
+      () => widget.state.admin.member(
+        existing['user_id'],
+        existing['role'],
+        existing['sector'],
+        false,
       ),
     );
   }

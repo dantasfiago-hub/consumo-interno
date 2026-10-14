@@ -4,6 +4,10 @@ Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronizaçã
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
 
+## Administração de aparelhos por setor
+
+Administração → Aparelhos atualiza a lista ao abrir e permite filtrar todos os setores ou Administração/Horti Fruti/Cozinha/Padaria. Mostra identificação, ativação e número de vínculos autorizados. **Excluir acesso** exige confirmação, revoga somente a máquina selecionada e preserva produtos, consumos e backups. O último administrador continua protegido; a própria máquina deve usar Sair ou trocar de setor. Aplique [011_admin_device_listing.sql](supabase/migrations/011_admin_device_listing.sql) após 010 para os metadados e recompile. [Guia](docs/GESTAO_APARELHOS.md).
+
 ## Relatórios por produto
 
 A página abre sem resultados. Selecione os filtros e pressione **Aplicar filtros**, ou use **Exibir histórico completo** para limpar os filtros e consultar confirmados e cancelados de todos os períodos/setores. Alterar um filtro oculta os resultados até aplicar novamente. Em seguida, ative **Agrupar por produto** para somar quantidades e valores dos registros filtrados. A tela, o CSV e o PDF usam o mesmo agrupamento e mostram também a quantidade de lançamentos. UN e KG, produtos distintos e confirmados/cancelados são separados. Recompile para aplicar; não exige SQL. Veja [os detalhes](docs/RELATORIO_POR_PRODUTO.md).
@@ -103,7 +107,7 @@ npm test
 
 O ambiente de validação da 1.6.1 usa Flutter 3.47.5/Dart 3.13.4. O build Android release exige o kit privado de assinatura. O código ZIP exclui suas credenciais; não publique o kit. O Windows precisa ser compilado em Windows com Visual Studio C++.
 
-Nuvem nova: esquema base e 002 a 010, nessa ordem. Nuvem com 009: somente 010. Nuvem 1.6.2: 009 e 010. Nuvem 1.6/1.6.1: 008 a 010. Nuvem 1.5: 007 a 010. Nuvem 1.4.1: 006 a 010. Nuvem 1.4.0: 005 a 010. Não reaplique o esquema base. Configure loja/códigos pelo SQL e ative os aparelhos; Administração gera códigos dos setores. Não é necessário e-mail.
+Nuvem nova: esquema base e 002 a 011, nessa ordem. Nuvem com 010: somente 011. Nuvem com 009: 010 e 011. Nuvem 1.6.2: 009 a 011. Nuvem 1.6/1.6.1: 008 a 011. Nuvem 1.5: 007 a 011. Nuvem 1.4.1: 006 a 011. Nuvem 1.4.0: 005 a 011. Não reaplique o esquema base. Configure loja/códigos pelo SQL e ative os aparelhos; Administração gera códigos dos setores. Não é necessário e-mail.
 
 Consulte [arquitetura](docs/ARQUITETURA_MELHORIAS.md), [alterações](docs/ALTERACOES_1_6.md) e [validação](docs/VALIDACAO.md). Capturas são renderizadas pelos testes Flutter com dados fictícios, não fotos de execução em Windows/telefone físico.
 
