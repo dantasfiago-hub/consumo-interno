@@ -35,8 +35,9 @@ class BackupController {
   }
 
   Future<void> _snapshot(bool force, bool required) async {
-    if (!force && !required && await db.setting('auto_backup') == 'false')
+    if (!force && !required && await db.setting('auto_backup') == 'false') {
       return;
+    }
     try {
       final custom = await db.setting('backup_directory');
       var root = custom != null && custom.isNotEmpty
