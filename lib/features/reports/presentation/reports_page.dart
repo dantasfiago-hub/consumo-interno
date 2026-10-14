@@ -19,7 +19,9 @@ class ReportsPage extends StatefulWidget {
 }
 
 class _ReportsPageState extends State<ReportsPage> {
-  final filter = ReportFilter();
+  ReportFilter filter = ReportFilter();
+  bool resultsVisible = false;
+  int filterRevision = 0;
   bool grouped = false, busy = false;
   String amountError = '';
   final fieldErrors = <String, String>{};
@@ -28,7 +30,9 @@ class _ReportsPageState extends State<ReportsPage> {
     if (!widget.state.canManage) {
       return const Center(child: Text('Acesso exclusivo do administrador.'));
     }
-    final rows = reportRows(widget.state.consumptions, filter);
+    final rows = resultsVisible
+        ? reportRows(widget.state.consumptions, filter)
+        : <ReportRow>[];
     final valid = rows.where((r) => r.consumption.status == 'confirmed');
     final total = valid.fold<int>(0, (n, r) => n + r.item.totalCents);
     final units = valid
@@ -51,6 +55,7 @@ class _ReportsPageState extends State<ReportsPage> {
             'Combine filtros e exporte os resultados.',
           ),
           Card(
+            key: ValueKey(filterRevision),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Wrap(
@@ -79,6 +84,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       );
                       if (range != null && mounted) {
                         setState(() {
+                          resultsVisible = false;
                           filter.from = range.start;
                           filter.to = range.end;
                         });
@@ -88,6 +94,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   if (filter.from != null)
                     TextButton(
                       onPressed: () => setState(() {
+                        resultsVisible = false;
                         filter.from = null;
                         filter.to = null;
                       }),
@@ -111,7 +118,10 @@ class _ReportsPageState extends State<ReportsPage> {
                         ),
                         DropdownMenuItem(value: '', child: Text('Todos')),
                       ],
-                      onChanged: (v) => setState(() => filter.status = v!),
+                      onChanged: (v) => setState(() {
+                        resultsVisible = false;
+                        filter.status = v!;
+                      }),
                     ),
                   ),
                   SizedBox(
@@ -124,7 +134,10 @@ class _ReportsPageState extends State<ReportsPage> {
                         DropdownMenuItem(value: 'UN', child: Text('UN')),
                         DropdownMenuItem(value: 'KG', child: Text('KG')),
                       ],
-                      onChanged: (v) => setState(() => filter.unit = v!),
+                      onChanged: (v) => setState(() {
+                        resultsVisible = false;
+                        filter.unit = v!;
+                      }),
                     ),
                   ),
                   _field('Total mínimo (R\$)', (v) {
@@ -149,90 +162,128 @@ class _ReportsPageState extends State<ReportsPage> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: [
-              _metric('Valor confirmado', money(total)),
-              _metric('Unidades', quantity(units, 'UN')),
-              _metric('Quilogramas', '${quantity(kg, 'KG')} kg'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '$sync ${widget.state.pending.length} operação(ões) pendente(s).',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              FilterChip(
-                label: Text('Agrupar por produto'),
-                selected: grouped,
-                onSelected: (v) => setState(() => grouped = v),
+              FilledButton.icon(
+                onPressed: busy || amountError.isNotEmpty
+                    ? null
+                    : () => setState(() => resultsVisible = true),
+                icon: const Icon(Icons.filter_alt_outlined),
+                label: const Text('Aplicar filtros'),
               ),
               OutlinedButton.icon(
-                onPressed: busy || rows.isEmpty || amountError.isNotEmpty
+                onPressed: busy
                     ? null
-                    : () => _export(rows, false, sync),
-                icon: Icon(Icons.table_view_outlined),
-                label: Text(
-                  grouped
-                      ? 'Exportar CSV por produto'
-                      : 'Exportar CSV detalhado',
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: busy || rows.isEmpty || amountError.isNotEmpty
-                    ? null
-                    : () => _export(rows, true, sync),
-                icon: Icon(Icons.picture_as_pdf_outlined),
-                label: Text(
-                  grouped
-                      ? 'Exportar PDF por produto'
-                      : 'Exportar PDF detalhado',
-                ),
+                    : () => setState(() {
+                        filter = ReportFilter()..status = '';
+                        filterRevision++;
+                        fieldErrors.clear();
+                        amountError = '';
+                        grouped = false;
+                        resultsVisible = true;
+                      }),
+                icon: const Icon(Icons.history),
+                label: const Text('Exibir histórico completo'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Text('Arquivo para importação: abra Exportações.'),
-          const SizedBox(height: 10),
-          if (rows.isEmpty)
-            const EmptyState(
-              'Nenhum resultado',
-              'Altere os filtros ou registre um consumo.',
-            ),
-          if (grouped)
-            ...summaries.map(
-              (s) => Card(
-                child: ListTile(
-                  title: Text('${s.code} · ${s.description}'),
-                  subtitle: Text(
-                    '${quantity(s.amount, s.unit)} ${s.unit} · ${s.consumptionCount} lançamento(s) · ${s.status == 'confirmed' ? 'Confirmado' : 'Cancelado'}',
-                  ),
-                  trailing: Text(money(s.totalCents)),
-                ),
-              ),
-            )
-          else
-            ...rows.map(
-              (r) => Card(
-                child: ListTile(
-                  title: Text('${r.item.code} · ${r.item.description}'),
-                  subtitle: Text(
-                    '${r.consumption.date.split('-').reversed.join('/')} · ${quantity(r.item.amount, r.item.unit)} ${r.item.unit}\n${r.consumption.operatorName} · ${sectorLabel(r.consumption.assignedSector ?? r.consumption.sector)}${r.consumption.status == 'cancelled' ? ' · Cancelado' : ''}',
-                  ),
-                  trailing: Text(money(r.item.totalCents)),
-                ),
+          if (!resultsVisible)
+            const Padding(
+              padding: EdgeInsets.only(top: 24),
+              child: EmptyState(
+                'Aplique os filtros para consultar',
+                'Selecione os filtros e pressione Aplicar filtros, ou escolha Exibir histórico completo.',
               ),
             ),
+          if (resultsVisible) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _metric('Valor confirmado', money(total)),
+                _metric('Unidades', quantity(units, 'UN')),
+                _metric('Quilogramas', '${quantity(kg, 'KG')} kg'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '$sync ${widget.state.pending.length} operação(ões) pendente(s).',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilterChip(
+                  label: Text('Agrupar por produto'),
+                  selected: grouped,
+                  onSelected: (v) => setState(() => grouped = v),
+                ),
+                OutlinedButton.icon(
+                  onPressed: busy || rows.isEmpty || amountError.isNotEmpty
+                      ? null
+                      : () => _export(rows, false, sync),
+                  icon: Icon(Icons.table_view_outlined),
+                  label: Text(
+                    grouped
+                        ? 'Exportar CSV por produto'
+                        : 'Exportar CSV detalhado',
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: busy || rows.isEmpty || amountError.isNotEmpty
+                      ? null
+                      : () => _export(rows, true, sync),
+                  icon: Icon(Icons.picture_as_pdf_outlined),
+                  label: Text(
+                    grouped
+                        ? 'Exportar PDF por produto'
+                        : 'Exportar PDF detalhado',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text('Arquivo para importação: abra Exportações.'),
+            const SizedBox(height: 10),
+            if (rows.isEmpty)
+              const EmptyState(
+                'Nenhum resultado',
+                'Altere os filtros ou registre um consumo.',
+              ),
+            if (grouped)
+              ...summaries.map(
+                (s) => Card(
+                  child: ListTile(
+                    title: Text('${s.code} · ${s.description}'),
+                    subtitle: Text(
+                      '${quantity(s.amount, s.unit)} ${s.unit} · ${s.consumptionCount} lançamento(s) · ${s.status == 'confirmed' ? 'Confirmado' : 'Cancelado'}',
+                    ),
+                    trailing: Text(money(s.totalCents)),
+                  ),
+                ),
+              )
+            else
+              ...rows.map(
+                (r) => Card(
+                  child: ListTile(
+                    title: Text('${r.item.code} · ${r.item.description}'),
+                    subtitle: Text(
+                      '${r.consumption.date.split('-').reversed.join('/')} · ${quantity(r.item.amount, r.item.unit)} ${r.item.unit}\n${r.consumption.operatorName} · ${sectorLabel(r.consumption.assignedSector ?? r.consumption.sector)}${r.consumption.status == 'cancelled' ? ' · Cancelado' : ''}',
+                    ),
+                    trailing: Text(money(r.item.totalCents)),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -244,6 +295,7 @@ class _ReportsPageState extends State<ReportsPage> {
       decoration: InputDecoration(labelText: label),
       onChanged: (v) {
         setState(() {
+          resultsVisible = false;
           try {
             update(v);
             fieldErrors.remove(label);
