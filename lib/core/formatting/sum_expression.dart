@@ -58,7 +58,12 @@ int parseSumQuantity(String text, String unit) {
   throw const FormatException('Unidade inválida.');
 }
 
-int parseSumWeightParts(String kilograms, String grams) {
+/// Normalize complete expressions without changing the stored gram precision.
+/// Zero is allowed here so empty editing fields and decrement buttons can work.
+({int kilograms, int grams}) normalizeSumWeightParts(
+  String kilograms,
+  String grams,
+) {
   final kg = parseSumScaled(
     kilograms.trim().isEmpty ? '0' : kilograms,
     0,
@@ -69,9 +74,17 @@ int parseSumWeightParts(String kilograms, String grams) {
     grams.trim().isEmpty ? '0' : grams,
     0,
     allowZero: true,
-    maximum: 999,
   );
-  final result = kg * 1000 + g;
+  final total = kg * 1000 + g;
+  if (total > 999999999999) {
+    throw const FormatException('O peso ultrapassa o limite permitido.');
+  }
+  return (kilograms: total ~/ 1000, grams: total % 1000);
+}
+
+int parseSumWeightParts(String kilograms, String grams) {
+  final parts = normalizeSumWeightParts(kilograms, grams);
+  final result = parts.kilograms * 1000 + parts.grams;
   if (result == 0) {
     throw const FormatException('Informe um peso maior que zero.');
   }

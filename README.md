@@ -4,6 +4,10 @@ Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronizaçã
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
 
+## Conversão de gramas excedentes
+
+Gramas acima de 999 agora contribuem automaticamente para os quilos: `2 kg + 1500 g = 3 kg e 500 g`. A prévia acompanha a digitação; ao sair do campo de gramas ou pressionar Enter, os campos são normalizados. Confirmar o item também calcula o peso correto, mesmo sem sair do campo. O botão + passa de 999 g para o próximo kg; o botão − pode retornar de 1 kg e 0 g para 999 g. Somas incompletas são preservadas e o limite total continua validado. Recompile para aplicar; não exige SQL. Veja [os detalhes](docs/GRAMAS_EXCEDENTES.md).
+
 ## Correções de logout e histórico
 
 Logout legado remove os tokens antigo e por loja e bloqueia o acesso local sem

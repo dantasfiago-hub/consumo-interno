@@ -41,7 +41,7 @@ int parseQuantity(String text, String unit) {
   return value;
 }
 
-/// Weight parts are integers, with grams strictly between 0 and 999.
+/// Integer parts; excess grams contribute to kilograms in the stored total.
 int parseWeightParts(String kilograms, String grams) {
   final kg = parseScaled(
     kilograms.trim().isEmpty ? '0' : kilograms,
@@ -49,7 +49,6 @@ int parseWeightParts(String kilograms, String grams) {
     allowZero: true,
   );
   final g = parseScaled(grams.trim().isEmpty ? '0' : grams, 0, allowZero: true);
-  if (g > 999) throw const FormatException('Informe de 0 a 999 gramas.');
   final milli = kg * 1000 + g;
   if (milli <= 0 || milli > 999999999999) {
     throw const FormatException(

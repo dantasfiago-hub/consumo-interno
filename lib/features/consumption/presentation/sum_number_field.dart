@@ -5,12 +5,16 @@ import '../../../core/formatting/sum_expression.dart';
 /// Text keyboard deliberately exposes + on Android; result is never stored as text.
 class SumNumberField extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onSubmitted;
   final String label, helper;
   final int decimals, maximum;
   final String Function(int) format;
   const SumNumberField({
     super.key,
     required this.controller,
+    this.focusNode,
+    this.onSubmitted,
     required this.label,
     required this.format,
     this.helper = 'Você pode somar: 10+20+5, sem colocar =.',
@@ -35,6 +39,8 @@ class SumNumberField extends StatelessWidget {
       }
       return TextField(
         controller: controller,
+        focusNode: focusNode,
+        onSubmitted: onSubmitted,
         keyboardType: TextInputType.text,
         autocorrect: false,
         enableSuggestions: false,

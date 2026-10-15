@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:consumo_interno/core/formatting/numbers.dart';
@@ -11,9 +12,10 @@ void main() {
     expect(parseWeightParts('2', '350'), 2350);
     expect(parseWeightParts('', '1'), 1);
     expect(parseWeightParts('1', ''), 1000);
+    expect(parseWeightParts('1', '1000'), 2000);
+    expect(parseWeightParts('2', '1500'), 3500);
     for (final parts in [
       ['0', '0'],
-      ['1', '1000'],
       ['1,5', '0'],
       ['1', '-1'],
       ['999999999999', '0'],
@@ -111,8 +113,16 @@ void main() {
                   find.byKey(const ValueKey('quantity-grams-plus')),
                 )
                 .onPressed,
-            isNull,
+            isNotNull,
           );
+          await tester.tap(find.byKey(const ValueKey('quantity-grams-plus')));
+          await tester.pump();
+          expect(whole.text, '1');
+          expect(grams.text, '0');
+          await tester.tap(find.byKey(const ValueKey('quantity-grams-minus')));
+          await tester.pump();
+          expect(whole.text, '0');
+          expect(grams.text, '999');
           await tester.tap(find.byKey(const ValueKey('quantity-grams-minus')));
           await tester.pump();
           expect(grams.text, '998');
