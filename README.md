@@ -4,6 +4,10 @@ Flutter para Android e Windows. Registro offline em SQLite/Drift, sincronizaçã
 
 Horti Fruti, Cozinha e Padaria veem somente seus produtos e os módulos de lançamento/cancelamento. Administradores gerenciam catálogo, relatórios, exportações, contas, auditoria, backups e pendências.
 
+## Correção de bloqueio do banco local
+
+A conexão SQLite agora usa WAL e espera até 5 segundos por bloqueios transitórios. A abertura de produção obtém exclusividade por instalação para impedir que duas cópias atualizadas do aplicativo disputem a mesma base e a área de recebimento da sincronização. Uma segunda abertura mostra orientação para fechar a outra janela. Feche todas as instâncias antigas antes de usar a nova compilação. A correção preserva o arquivo existente, registros e fila de envio; não exige SQL Supabase. Veja [o guia](docs/BANCO_LOCAL_BLOQUEADO.md).
+
 ## Conversão de gramas excedentes
 
 Gramas acima de 999 agora contribuem automaticamente para os quilos: `2 kg + 1500 g = 3 kg e 500 g`. A prévia acompanha a digitação; ao sair do campo de gramas ou pressionar Enter, os campos são normalizados. Confirmar o item também calcula o peso correto, mesmo sem sair do campo. O botão + passa de 999 g para o próximo kg; o botão − pode retornar de 1 kg e 0 g para 999 g. Somas incompletas são preservadas e o limite total continua validado. Recompile para aplicar; não exige SQL. Veja [os detalhes](docs/GRAMAS_EXCEDENTES.md).

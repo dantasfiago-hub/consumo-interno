@@ -6,7 +6,8 @@ import 'package:crypto/crypto.dart';
 import '../../core/backup/backup_envelope.dart';
 
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
+import 'database_instance_lock.dart';
+import 'sqlite_connection.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -18,14 +19,37 @@ import '../../features/exports/domain/export.dart';
 const uuid = Uuid();
 
 class LocalDatabase extends GeneratedDatabase {
-  LocalDatabase(super.executor);
+  final DatabaseInstanceLock? _instanceLock;
+  LocalDatabase(super.executor, {DatabaseInstanceLock? instanceLock})
+    : _instanceLock = instanceLock;
   static Future<LocalDatabase> open() async {
     final dir = await getApplicationSupportDirectory();
-    return LocalDatabase(
-      NativeDatabase.createInBackground(
-        File(p.join(dir.path, 'consumo.sqlite')),
-      ),
-    );
+    final file = File(p.join(dir.path, 'consumo.sqlite'));
+    final lock = await DatabaseInstanceLock.acquire(File('${file.path}.lock'));
+    LocalDatabase? db;
+    try {
+      db = LocalDatabase(openLocalSqlite(file), instanceLock: lock);
+      // Opening is lazy in Drift. Initialize before returning so failures release
+      // the process lock rather than preventing a subsequent startup.
+      await db.customSelect('SELECT 1').get();
+      return db;
+    } catch (_) {
+      try {
+        await db?.close();
+      } finally {
+        await lock.release();
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    try {
+      await super.close();
+    } finally {
+      await _instanceLock?.release();
+    }
   }
 
   @override
