@@ -38,8 +38,9 @@ Future<void> main() async {
           .read<int>('timeout');
       final mode = (await db.customSelect('PRAGMA journal_mode').getSingle())
           .read<String>('journal_mode');
-      if (timeout != 5000 || mode.toLowerCase() != 'wal')
+      if (timeout != 5000 || mode.toLowerCase() != 'wal') {
         throw StateError('Connection settings were not applied');
+      }
     }
     await first.customStatement(
       "INSERT INTO incoming VALUES('initial','preserved')",
@@ -54,20 +55,24 @@ Future<void> main() async {
     final read = await second
         .customSelect('SELECT count(*) n FROM incoming')
         .getSingle();
-    if (read.read<int>('n') != 1)
+    if (read.read<int>('n') != 1) {
       throw StateError('Uncommitted row was exposed');
+    }
     var finished = false;
     final waiting = second
         .customStatement("INSERT INTO incoming VALUES('second','two')")
         .then((_) => finished = true);
     await Future<void>.delayed(const Duration(milliseconds: 250));
-    if (finished)
+    if (finished) {
       throw StateError('Second writer bypassed the held transaction');
+    }
     release.complete();
     await writer;
     await waiting;
     final rows = await first.customSelect('SELECT * FROM incoming').get();
-    if (rows.length != 3) throw StateError('Concurrent write was lost');
+    if (rows.length != 3) {
+      throw StateError('Concurrent write was lost');
+    }
     try {
       await second.transaction(() async {
         await second.customStatement(
@@ -81,13 +86,16 @@ Future<void> main() async {
     final failed = await first
         .customSelect("SELECT * FROM incoming WHERE id='rollback'")
         .get();
-    if (failed.isNotEmpty)
+    if (failed.isNotEmpty) {
       throw StateError('Failed transaction was partially committed');
+    }
     print(
       'PASS: WAL and timeout on both connections, concurrent reader/writer, writer waits then succeeds, rollback preserves data.',
     );
   } finally {
-    if (!release.isCompleted) release.complete();
+    if (!release.isCompleted) {
+      release.complete();
+    }
     await writer;
     await second.close();
     await first.close();

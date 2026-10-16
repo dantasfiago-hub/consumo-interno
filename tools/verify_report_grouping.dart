@@ -4,7 +4,9 @@ import '../lib/features/reports/domain/report.dart';
 import '../lib/features/consumption/domain/consumption.dart';
 
 void check(bool condition, String message) {
-  if (!condition) throw StateError(message);
+  if (!condition) {
+    throw StateError(message);
+  }
 }
 
 Consumption entry(

@@ -50,14 +50,18 @@ Future<void> main(List<String> args) async {
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .first;
-    if (ready != 'locked') throw StateError('Child failed to acquire lock');
+    if (ready != 'locked') {
+      throw StateError('Child failed to acquire lock');
+    }
     child.kill();
     await child.exitCode;
     child = null;
     owner = await DatabaseInstanceLock.acquire(file);
     await owner.release();
     owner = null;
-    if (!await file.exists()) throw StateError('Lock file must not be deleted');
+    if (!await file.exists()) {
+      throw StateError('Lock file must not be deleted');
+    }
     print(
       'PASS: second process rejected, release/reopen, process exit recovery, idempotent close.',
     );
