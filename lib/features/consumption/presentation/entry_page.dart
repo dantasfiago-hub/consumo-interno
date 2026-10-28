@@ -177,11 +177,16 @@ class _EntryPageState extends State<EntryPage> {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           IconButton(
+                            tooltip: 'Editar quantidade e valor',
+                            onPressed: busy ? null : () => _editItem(item),
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                          IconButton(
                             tooltip: 'Remover item',
                             onPressed: busy
                                 ? null
                                 : () => setState(() => items.remove(item)),
-                            icon: Icon(Icons.delete_outline),
+                            icon: const Icon(Icons.delete_outline),
                           ),
                         ],
                       ),
@@ -248,7 +253,12 @@ class _EntryPageState extends State<EntryPage> {
     );
   }
 
-  Future<void> _addItem() async {
+  Future<void> _addItem() => _pickItem();
+
+  Future<void> _editItem(ConsumptionItem current) =>
+      _pickItem(existing: current);
+
+  Future<void> _pickItem({ConsumptionItem? existing}) async {
     final selectedSector = widget.state.canManage
         ? sectorKey(sector.text)
         : widget.state.sectorId;
@@ -264,17 +274,25 @@ class _EntryPageState extends State<EntryPage> {
             .toList(),
         favorites: widget.state.favorites,
         recent: widget.state.recentProducts,
+        initialItem: existing,
       ),
     );
     if (item != null && mounted) {
-      if (items.any((i) => i.productId == item.productId)) {
-        message(
-          context,
-          'Produto já adicionado. Remova o item para alterar a quantidade e o total.',
-        );
+      final duplicate = items.any(
+        (i) => i.productId == item.productId && i.id != existing?.id,
+      );
+      if (duplicate) {
+        message(context, 'Esse produto já está no lançamento.');
         return;
       }
-      setState(() => items.add(item));
+      setState(() {
+        if (existing == null) {
+          items.add(item);
+        } else {
+          final index = items.indexWhere((i) => i.id == existing.id);
+          if (index >= 0) items[index] = item;
+        }
+      });
     }
   }
 
@@ -354,11 +372,13 @@ class ItemPicker extends StatefulWidget {
   final List<Product> products;
   final Set<String> favorites;
   final List<String> recent;
+  final ConsumptionItem? initialItem;
   const ItemPicker({
     super.key,
     required this.products,
     this.favorites = const {},
     this.recent = const [],
+    this.initialItem,
   });
   @override
   State<ItemPicker> createState() => _ItemPickerState();
@@ -371,6 +391,26 @@ class _ItemPickerState extends State<ItemPicker> {
   final amount = TextEditingController(),
       grams = TextEditingController(),
       total = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.initialItem;
+    if (item != null) {
+      selected = widget.products.where((p) => p.id == item.productId).firstOrNull;
+      if (selected != null) {
+        if (item.unit == 'KG') {
+          amount.text = (item.amount ~/ 1000).toString();
+          grams.text = (item.amount % 1000).toString();
+        } else {
+          amount.text = (item.amount ~/ 1000).toString();
+          grams.text = '0';
+        }
+        total.text = (item.totalCents / 100).toStringAsFixed(2).replaceAll('.', ',');
+      }
+    }
+  }
+
   @override
   void dispose() {
     amount.dispose();
@@ -406,7 +446,11 @@ class _ItemPickerState extends State<ItemPicker> {
           });
     return AlertDialog(
       title: Text(
-        selected == null ? 'Selecionar produto' : 'Quantidade e valor',
+        selected == null
+            ? 'Selecionar produto'
+            : widget.initialItem == null
+                ? 'Quantidade e valor'
+                : 'Editar quantidade e valor',
       ),
       content: SizedBox(
         width: 540,
@@ -531,7 +575,7 @@ class _ItemPickerState extends State<ItemPicker> {
                 Navigator.pop(
                   context,
                   ConsumptionItem(
-                    id: uuid.v4(),
+                    id: widget.initialItem?.id ?? uuid.v4(),
                     productId: p.id,
                     code: p.code,
                     description: p.description,
@@ -549,7 +593,9 @@ class _ItemPickerState extends State<ItemPicker> {
                 );
               }
             },
-            child: Text('Adicionar'),
+            child: Text(
+              widget.initialItem == null ? 'Adicionar' : 'Salvar alterações',
+            ),
           ),
       ],
     );
