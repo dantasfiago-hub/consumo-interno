@@ -126,6 +126,8 @@ class LocalDatabase extends GeneratedDatabase {
     for (final key in [
       'entity_cursor',
       'sector_scope_reconciled',
+      'batch_cursor',
+      'last_batch_fetch',
       'role',
       'sector',
       'access_verified',
