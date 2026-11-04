@@ -17,7 +17,7 @@ end $$;
 
 drop trigger if exists export_batches_revision on public.export_batches;
 create trigger export_batches_revision
-before insert or update on public.export_batches
+before update on public.export_batches
 for each row execute function public.set_export_batch_revision();
 
 notify pgrst, 'reload schema';
