@@ -832,19 +832,25 @@ class CloudService implements ExportRepository {
 
   Future<void> fetchBatches() async {
     final store = await db.setting('store');
-    String? cursor;
+    // The server-side revision changes on both insert and update. A durable
+    // cursor means only batches created or modified since the last successful
+    // fetch are transferred; a failed page leaves the cursor untouched.
+    var cursor = int.tryParse(await db.setting('batch_cursor') ?? '') ?? 0;
     while (true) {
       final page =
           await _request(
-                '/rest/v1/export_batches?store_id=eq.$store&select=id,body&order=id.asc&limit=20${cursor == null ? '' : '&id=gt.$cursor'}',
+                '/rest/v1/export_batches?store_id=eq.$store&select=id,body,revision&revision=gt.$cursor&order=revision.asc&limit=20',
               )
               as List;
       for (final r in page) {
         await db.acceptRemote('batch', Map<String, dynamic>.from(r['body']));
       }
+      if (page.isNotEmpty) {
+        cursor = (page.last['revision'] as num).toInt();
+      }
       if (page.length < 20) break;
-      cursor = page.last['id'];
     }
+    await db.setSetting('batch_cursor', cursor.toString());
   }
 
   Future<void> resolveWithRemote(String kind, String id) async {
