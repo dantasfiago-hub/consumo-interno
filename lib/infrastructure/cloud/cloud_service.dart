@@ -30,9 +30,46 @@ class CloudService implements ExportRepository {
   final http.Client client;
   final FlutterSecureStorage storage;
   String? _token;
+  DateTime? _tokenExpiresAt;
+  Future<void>? _refreshTask;
   String? userId;
   String role = 'operator', sectorId = '';
   int featuresVersion = 3;
+
+  // Keep a safety margin so requests do not start with an almost expired
+  // access token. Serialize refreshes because Supabase rotates refresh tokens.
+  static const Duration _refreshSafetyWindow = Duration(minutes: 2);
+
+  DateTime? _sessionExpiry(Json data) {
+    final expiresAt = data['expires_at'];
+    if (expiresAt is num && expiresAt > 0) {
+      return DateTime.fromMillisecondsSinceEpoch((expiresAt * 1000).round());
+    }
+
+    final accessToken = data['access_token'];
+    if (accessToken is String) {
+      final parts = accessToken.split('.');
+      if (parts.length == 3) {
+        try {
+          final payload = jsonDecode(
+            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+          );
+          final exp = payload is Map ? payload['exp'] : null;
+          if (exp is num && exp > 0) {
+            return DateTime.fromMillisecondsSinceEpoch((exp * 1000).round());
+          }
+        } catch (_) {
+          // Fall back to expires_in when the JWT payload cannot be decoded.
+        }
+      }
+    }
+
+    final expiresIn = data['expires_in'];
+    if (expiresIn is num && expiresIn > 0) {
+      return DateTime.now().add(Duration(seconds: expiresIn.floor()));
+    }
+    return null;
+  }
   CloudService(this.db, {http.Client? client, FlutterSecureStorage? storage})
     : client = client ?? http.Client(),
       storage = storage ?? const FlutterSecureStorage();
@@ -177,6 +214,7 @@ class CloudService implements ExportRepository {
     await db.setSetting('cloud_key', key.trim());
     await db.setSetting('store', store.trim());
     _token = null;
+    _tokenExpiresAt = null;
   }
 
   Future<void> login(String email, String password) async {
@@ -266,7 +304,28 @@ class CloudService implements ExportRepository {
     );
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh() {
+    final expiry = _tokenExpiresAt;
+    if (_token != null &&
+        expiry != null &&
+        expiry.isAfter(DateTime.now().add(_refreshSafetyWindow))) {
+      return Future<void>.value();
+    }
+
+    // Reuse an in-flight refresh so a rotating refresh token is never
+    // consumed twice by concurrent synchronization or administrative actions.
+    final inFlight = _refreshTask;
+    if (inFlight != null) return inFlight;
+
+    late final Future<void> task;
+    task = _refreshFromStorage().whenComplete(() {
+      if (identical(_refreshTask, task)) _refreshTask = null;
+    });
+    _refreshTask = task;
+    return task;
+  }
+
+  Future<void> _refreshFromStorage() async {
     final token = await _readRefreshToken();
     if (token == null) {
       throw const CloudException(
@@ -283,6 +342,7 @@ class CloudService implements ExportRepository {
 
   Future<void> _acceptSession(Json data) async {
     _token = data['access_token'];
+    _tokenExpiresAt = _sessionExpiry(data);
     final id = data['user']['id'] as String;
     final store = await db.setting('store');
     final url = await db.setting('cloud_url');
@@ -290,6 +350,7 @@ class CloudService implements ExportRepository {
     final existing = await db.setting('binding');
     if (existing != null && existing != binding) {
       _token = null;
+      _tokenExpiresAt = null;
       throw const CloudException(
         'Conta ou loja diferente da instalação original.',
       );
@@ -355,6 +416,7 @@ class CloudService implements ExportRepository {
     }
     // Local database stays bound to its original user. Never mix accounts.
     _token = null;
+    _tokenExpiresAt = null;
     await storage.delete(key: 'refresh_token');
     await storage.delete(key: await _refreshKey());
     userId = null;
