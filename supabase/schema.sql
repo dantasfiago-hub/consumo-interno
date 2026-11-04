@@ -45,7 +45,7 @@ begin
   return new;
 end $;
 create trigger export_batches_revision
-before insert or update on public.export_batches
+before update on public.export_batches
 for each row execute function public.set_export_batch_revision();
 create table public.export_items (
   store_id uuid not null, consumption_id uuid not null, item_id uuid not null, batch_id uuid not null,
