@@ -398,6 +398,7 @@ class CloudService implements ExportRepository {
     if (await db.setting('role') != role ||
         await db.setting('sector') != sectorId) {
       await db.setSetting('entity_cursor', '0');
+      await db.removeSetting('sector_scope_reconciled');
     }
     await db.setSetting('binding', binding);
     await db.setSetting('role', role);
@@ -436,7 +437,9 @@ class CloudService implements ExportRepository {
     var device = await db.setting('device');
     device ??= uuid.v4();
     await db.setSetting('device', device);
-    if (featuresVersion >= 4) await _applyReviews(store!);
+    if (featuresVersion >= 4 && (await db.pending()).isNotEmpty) {
+      await _applyReviews(store!);
+    }
     String? failure;
     for (final op in await db.pending()) {
       try {
@@ -498,7 +501,11 @@ class CloudService implements ExportRepository {
       if (page.length < 20) break;
     }
     await db.commitIncoming(cursor, operatorId: null);
-    if (role == 'operator') await _reconcileSectorScope();
+    if (role == 'operator' &&
+        await db.setting('sector_scope_reconciled') != '1') {
+      await _reconcileSectorScope();
+      await db.setSetting('sector_scope_reconciled', '1');
+    }
     if (featuresVersion >= 4) {
       final missing = <Json>[];
       for (final product in await db.records('product')) {
@@ -528,7 +535,23 @@ class CloudService implements ExportRepository {
         failure ??= 'Confirmação de arquivo salvo pendente: $e';
       }
     }
-    await fetchBatches();
+    // Operators do not use export-batch administration data. For admins,
+    // avoid downloading the complete batch history on every sync cycle.
+    if (role == 'admin') {
+      final lastFetch = DateTime.tryParse(
+        await db.setting('last_batch_fetch') ?? '',
+      );
+      final due = lastFetch == null ||
+          DateTime.now().toUtc().difference(lastFetch) >=
+              const Duration(minutes: 2);
+      if (due) {
+        await fetchBatches();
+        await db.setSetting(
+          'last_batch_fetch',
+          DateTime.now().toUtc().toIso8601String(),
+        );
+      }
+    }
     await db.setSetting('last_sync', DateTime.now().toIso8601String());
     if (featuresVersion >= 4 &&
         await db.setting('auto_cloud_backup') != 'false') {
