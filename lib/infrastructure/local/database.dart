@@ -125,6 +125,7 @@ class LocalDatabase extends GeneratedDatabase {
     await customStatement('DELETE FROM archives');
     for (final key in [
       'entity_cursor',
+      'sector_scope_reconciled',
       'role',
       'sector',
       'access_verified',
