@@ -35,8 +35,18 @@ create table public.operations (
 create table public.export_batches (
   store_id uuid not null references public.stores(id), id uuid not null,
   created_at timestamptz not null default now(), created_by uuid not null references auth.users(id),
-  body jsonb not null, primary key(store_id,id)
+  revision bigserial not null, body jsonb not null, primary key(store_id,id)
 );
+create index export_batches_sync_revision on public.export_batches(store_id,revision);
+create function public.set_export_batch_revision()
+returns trigger language plpgsql set search_path=public,pg_temp as $
+begin
+  new.revision:=nextval('public.export_batches_revision_seq');
+  return new;
+end $;
+create trigger export_batches_revision
+before insert or update on public.export_batches
+for each row execute function public.set_export_batch_revision();
 create table public.export_items (
   store_id uuid not null, consumption_id uuid not null, item_id uuid not null, batch_id uuid not null,
   primary key(store_id,consumption_id,item_id),
