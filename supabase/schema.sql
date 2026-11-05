@@ -41,7 +41,7 @@ create index export_batches_sync_revision on public.export_batches(store_id,revi
 create function public.set_export_batch_revision()
 returns trigger language plpgsql set search_path=public,pg_temp as $
 begin
-  new.revision:=nextval('public.export_batches_revision_seq');
+  new.revision := nextval('public.export_batches_revision_seq');
   return new;
 end $;
 create trigger export_batches_revision
