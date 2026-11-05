@@ -39,11 +39,11 @@ create table public.export_batches (
 );
 create index export_batches_sync_revision on public.export_batches(store_id,revision);
 create function public.set_export_batch_revision()
-returns trigger language plpgsql set search_path=public,pg_temp as $
+returns trigger language plpgsql set search_path=public,pg_temp as $$
 begin
   new.revision := nextval('public.export_batches_revision_seq');
   return new;
-end $;
+end $$;
 create trigger export_batches_revision
 before update on public.export_batches
 for each row execute function public.set_export_batch_revision();
