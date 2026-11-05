@@ -23,7 +23,37 @@ class _TestDatabase extends GeneratedDatabase {
   );
 }
 
+Future<void> _writeWithBusyRetry(
+  GeneratedDatabase db,
+  String statement, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  var delay = const Duration(milliseconds: 50);
+  while (true) {
+    try {
+      await db.customStatement(statement);
+      return;
+    } catch (error) {
+      // SQLITE_BUSY (5) can be returned by a worker even after the lock
+      // holder has been released. Retry only this transient lock condition.
+      if (!error.toString().contains('SqliteException(5)') ||
+          !DateTime.now().isBefore(deadline)) {
+        rethrow;
+      }
+      await Future<void>.delayed(delay);
+      delay = Duration(
+        milliseconds: (delay.inMilliseconds * 2).clamp(50, 500),
+      );
+    }
+  }
+}
+
 Future<void> main() async {
+  final previousWarningSetting =
+      driftRuntimeOptions.dontWarnAboutMultipleDatabases;
+  // Two independent database instances are intentional in this contention test.
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   final directory = await Directory.systemTemp.createTemp('consumo_sqlite_');
   final file = File('${directory.path}/database.sqlite');
   final first = _TestDatabase(file);
@@ -59,9 +89,10 @@ Future<void> main() async {
       throw StateError('Uncommitted row was exposed');
     }
     var finished = false;
-    final waiting = second
-        .customStatement("INSERT INTO incoming VALUES('second','two')")
-        .then((_) => finished = true);
+    final waiting = _writeWithBusyRetry(
+      second,
+      "INSERT INTO incoming VALUES('second','two')",
+    ).then((_) => finished = true);
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (finished) {
       throw StateError('Second writer bypassed the held transaction');
@@ -100,5 +131,7 @@ Future<void> main() async {
     await second.close();
     await first.close();
     await directory.delete(recursive: true);
+    driftRuntimeOptions.dontWarnAboutMultipleDatabases =
+        previousWarningSetting;
   }
 }
