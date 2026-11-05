@@ -43,7 +43,7 @@ Future<void> _writeWithBusyRetry(
       }
       await Future<void>.delayed(delay);
       delay = Duration(
-        milliseconds: (delay.inMilliseconds * 2).clamp(50, 500),
+        milliseconds: (delay.inMilliseconds * 2).clamp(50, 500).toInt(),
       );
     }
   }
