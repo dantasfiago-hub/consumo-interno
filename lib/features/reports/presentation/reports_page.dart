@@ -418,7 +418,7 @@ class _ReportsPageState extends State<ReportsPage> {
       );
       if (mounted && path != null) message(context, 'Arquivo exportado.');
     } catch (e) {
-      if (mounted) message(context, e.toString());
+      if (mounted) message(context, friendlyError(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }

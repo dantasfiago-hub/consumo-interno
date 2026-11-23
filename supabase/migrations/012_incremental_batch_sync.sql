@@ -1,11 +1,13 @@
 -- Incremental synchronization for export batches.
 -- Every insert or update receives a monotonically increasing revision.
+-- Idempotent: a store created from the current schema.sql already has these
+-- objects, and an existing store receives them here. Safe to run in both cases.
 begin;
 
 alter table public.export_batches
-  add column revision bigserial not null;
+  add column if not exists revision bigserial not null;
 
-create index export_batches_sync_revision
+create index if not exists export_batches_sync_revision
   on public.export_batches(store_id, revision);
 
 create or replace function public.set_export_batch_revision()

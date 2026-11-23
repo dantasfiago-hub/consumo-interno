@@ -1,6 +1,24 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../domain/models.dart';
+
+/// Text that is safe to show to a person: no Dart exception prefixes.
+String friendlyError(Object error) {
+  if (error is TimeoutException) {
+    return 'Tempo esgotado. Verifique a conexão e tente novamente.';
+  }
+  final text = error.toString();
+  for (final prefix in const [
+    'Bad state: ',
+    'FormatException: ',
+    'Exception: ',
+    'Invalid argument(s): ',
+  ]) {
+    if (text.startsWith(prefix)) return text.substring(prefix.length);
+  }
+  return text;
+}
 
 void message(BuildContext context, String text) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
@@ -12,7 +30,7 @@ Future<void> guarded(
     await action();
   } catch (e) {
     if (context.mounted) {
-      message(context, e.toString().replaceFirst('Bad state: ', ''));
+      message(context, friendlyError(e));
     }
   }
 }

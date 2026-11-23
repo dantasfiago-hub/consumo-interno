@@ -135,6 +135,7 @@ class LocalDatabase extends GeneratedDatabase {
       'favorites',
       'recent_products',
       'admin_password_required',
+      'cloud_backup_checked',
     ]) {
       await customStatement('DELETE FROM settings WHERE key=?', [key]);
     }
@@ -147,6 +148,11 @@ class LocalDatabase extends GeneratedDatabase {
     'SELECT body FROM records WHERE kind=? ORDER BY rowid DESC',
     variables: [Variable.withString(kind)],
   ).get()).map((r) => decodeObject(r.read<String>('body'))).toList();
+  /// Cheap emptiness check; avoids decoding every record of the kind.
+  Future<bool> hasRecords(String kind) async => (await customSelect(
+    'SELECT 1 FROM records WHERE kind=? LIMIT 1',
+    variables: [Variable.withString(kind)],
+  ).get()).isNotEmpty;
   Future<Json?> record(String kind, String id) async {
     final r = await customSelect(
       'SELECT body FROM records WHERE kind=? AND id=?',
@@ -693,10 +699,12 @@ class LocalDatabase extends GeneratedDatabase {
       for (final p in products) {
         await _put('product', p.toJson());
       }
-      for (final c in consumptions) {
-        final raw = (data['consumptions'] as List).firstWhere(
-          (r) => r['id'] == c.id,
-        );
+      // `consumptions` was decoded from this list in order, so the raw entry
+      // is at the same index (a lookup by id inside the loop was quadratic).
+      final rawConsumptions = data['consumptions'] as List;
+      for (var n = 0; n < consumptions.length; n++) {
+        final c = consumptions[n];
+        final raw = rawConsumptions[n];
         await _put('consumption', {
           ...c.toJson(),
           if (raw['_sector_id'] != null) '_sector_id': raw['_sector_id'],
