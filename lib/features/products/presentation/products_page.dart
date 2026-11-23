@@ -6,6 +6,7 @@ import '../../../domain/models.dart';
 import '../../../infrastructure/local/database.dart';
 import '../data/photo_service.dart';
 import '../../../core/widgets/common.dart';
+import '../../../core/formatting/search.dart';
 
 class ProductsPage extends StatefulWidget {
   final AppState state;
@@ -27,8 +28,8 @@ class _ProductsPageState extends State<ProductsPage> {
           (p) =>
               (showInactive || p.active) &&
               (!onlyFavorites || widget.state.favorites.contains(p.id)) &&
-              '${p.code} ${p.description}'.toLowerCase().contains(
-                search.toLowerCase(),
+              normalizeSearch('${p.code} ${p.description}').contains(
+                normalizeSearch(search),
               ) &&
               (unit.isEmpty || p.unit == unit) &&
               (sectorFilter.isEmpty ||
@@ -296,7 +297,7 @@ class _ProductEditorState extends State<ProductEditor> {
                                 }
                               } catch (e) {
                                 if (mounted) {
-                                  setState(() => error = e.toString());
+                                  setState(() => error = friendlyError(e));
                                 }
                               } finally {
                                 if (mounted) setState(() => busy = false);

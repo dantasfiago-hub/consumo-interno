@@ -1,5 +1,6 @@
 import '../../core/activation/activation_config.dart';
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -16,6 +17,10 @@ import 'package:http/http.dart' as http;
 
 import '../../domain/models.dart';
 import '../local/database.dart';
+
+// Values that come from the server or from the database are encoded before
+// they are placed in a REST filter, so they cannot add extra parameters.
+String _q(Object? value) => Uri.encodeQueryComponent('$value');
 
 class CloudException implements Exception {
   final String message;
@@ -39,6 +44,10 @@ class CloudService implements ExportRepository {
   // Keep a safety margin so requests do not start with an almost expired
   // access token. Serialize refreshes because Supabase rotates refresh tokens.
   static const Duration _refreshSafetyWindow = Duration(minutes: 2);
+
+  // Serializing the whole database is the expensive part of a cloud backup, so
+  // it is evaluated at most this often instead of on every synchronization.
+  static const Duration _cloudBackupInterval = Duration(minutes: 30);
 
   DateTime? _sessionExpiry(Json data) {
     final expiresAt = data['expires_at'];
@@ -105,11 +114,18 @@ class CloudService implements ExportRepository {
       'Content-Type': 'application/json',
       if (auth && _token != null) 'Authorization': 'Bearer $_token',
     };
-    final response =
-        await (body == null
-                ? client.get(uri, headers: headers)
-                : client.post(uri, headers: headers, body: jsonEncode(body)))
-            .timeout(const Duration(seconds: 30));
+    final http.Response response;
+    try {
+      response =
+          await (body == null
+                  ? client.get(uri, headers: headers)
+                  : client.post(uri, headers: headers, body: jsonEncode(body)))
+              .timeout(const Duration(seconds: 30));
+    } on TimeoutException {
+      throw const CloudException(
+        'Tempo esgotado ao contatar o servidor. Verifique a conexão e tente novamente.',
+      );
+    }
     dynamic data;
     try {
       data = jsonDecode(response.body);
@@ -358,7 +374,7 @@ class CloudService implements ExportRepository {
     // Refresh tokens rotate. Persist the newly issued one before another network request.
     await _writeRefreshToken(data['refresh_token'] as String);
     final memberships = await _request(
-      '/rest/v1/memberships?store_id=eq.$store&user_id=eq.$id&select=role,sector,features_version',
+      '/rest/v1/memberships?store_id=eq.${_q(store)}&user_id=eq.${_q(id)}&select=role,sector,features_version',
     );
     if (memberships is! List || memberships.isEmpty) {
       _token = null;
@@ -441,7 +457,12 @@ class CloudService implements ExportRepository {
       await _applyReviews(store!);
     }
     String? failure;
+    // Entities whose operation was permanently rejected. Their later operations
+    // wait for review, but independent consumptions keep being sent.
+    final blockedEntities = <String>{};
     for (final op in await db.pending()) {
+      final entityKey = '${op['kind']}/${op['entity_id']}';
+      if (blockedEntities.contains(entityKey)) continue;
       try {
         final body = decodeObject(op['body']);
         // Do not rewrite a durable operation: earlier versions may already have committed it.
@@ -459,13 +480,14 @@ class CloudService implements ExportRepository {
         await db.acknowledge(op['op_id']);
       } catch (e) {
         await db.fail(op['op_id'], e.toString());
-        failure = e.toString();
-        if (featuresVersion >= 4 &&
+        failure ??= e.toString();
+        final rejected =
             e is CloudException &&
             e.statusCode != null &&
             e.statusCode! >= 400 &&
             e.statusCode! < 500 &&
-            e.statusCode != 429) {
+            e.statusCode != 429;
+        if (featuresVersion >= 4 && rejected) {
           try {
             await _request(
               '/rest/v1/rpc/report_sync_issue',
@@ -484,7 +506,22 @@ class CloudService implements ExportRepository {
             /* Keep the original operation durable when review submission fails. */
           }
         }
-        break; // Preserve dependencies. Never silently discard failed operations.
+        // A permanent rejection of a consumption does not depend on other
+        // consumptions, so keep sending the rest. Authentication errors,
+        // timeouts, throttling, server/network failures and product operations
+        // still stop the queue to preserve dependencies. Failed operations are
+        // never discarded.
+        final code = e is CloudException ? e.statusCode : null;
+        final independentRejection =
+            rejected &&
+            op['kind'] == 'consumption' &&
+            code != 401 &&
+            code != 408;
+        if (independentRejection) {
+          blockedEntities.add(entityKey);
+          continue;
+        }
+        break;
       }
     }
     var cursor = await db.setting('entity_cursor') ?? '0';
@@ -492,7 +529,7 @@ class CloudService implements ExportRepository {
     while (true) {
       final page =
           await _request(
-                '/rest/v1/entities?store_id=eq.$store&select=id,kind,body,created_by,revision,sector_id,export_locked&order=revision.asc&revision=gt.$cursor&limit=20',
+                '/rest/v1/entities?store_id=eq.${_q(store)}&select=id,kind,body,created_by,revision,sector_id,export_locked&order=revision.asc&revision=gt.${_q(cursor)}&limit=20',
               )
               as List;
       if (featuresVersion >= 4) await _hydrateImages(page, store!);
@@ -586,7 +623,7 @@ class CloudService implements ExportRepository {
     if (missing.isNotEmpty) {
       final images =
           await _request(
-                '/rest/v1/product_images?store_id=eq.$store&hash=in.(${missing.join(',')})&select=hash,data_base64',
+                '/rest/v1/product_images?store_id=eq.${_q(store)}&hash=in.(${missing.map(_q).join(',')})&select=hash,data_base64',
               )
               as List;
       for (final image in images) {
@@ -614,7 +651,7 @@ class CloudService implements ExportRepository {
   Future<void> _applyReviews(String store) async {
     final reviews =
         await _request(
-              '/rest/v1/sync_issues?store_id=eq.$store&actor=eq.$userId&status=in.(accept_remote,applied)&select=operation_id,kind,entity_id,review_reason,status',
+              '/rest/v1/sync_issues?store_id=eq.${_q(store)}&actor=eq.${_q(userId)}&status=in.(accept_remote,applied)&select=operation_id,kind,entity_id,review_reason,status',
             )
             as List;
     for (final review in reviews) {
@@ -625,7 +662,7 @@ class CloudService implements ExportRepository {
       }
       final rows =
           await _request(
-                '/rest/v1/entities?store_id=eq.$store&kind=eq.${review['kind']}&id=eq.${review['entity_id']}&select=body,sector_id,export_locked',
+                '/rest/v1/entities?store_id=eq.${_q(store)}&kind=eq.${_q(review['kind'])}&id=eq.${_q(review['entity_id'])}&select=body,sector_id,export_locked',
               )
               as List;
       await db.resolveWithRemote(
@@ -644,11 +681,20 @@ class CloudService implements ExportRepository {
   }
 
   Future<void> _backupDevice(String store, String device) async {
+    final checked = DateTime.tryParse(
+      await db.setting('cloud_backup_checked') ?? '',
+    );
+    if (checked != null) {
+      final elapsed = DateTime.now().toUtc().difference(checked);
+      if (!elapsed.isNegative && elapsed < _cloudBackupInterval) return;
+    }
     final snapshot = decodeObject(await db.backup())..remove('exported_at');
     final bytes = zlib.encode(utf8.encode(jsonEncode(snapshot)));
     final hash = sha256.convert(bytes).toString();
+    final now = DateTime.now().toUtc().toIso8601String();
     if (await db.setting('cloud_backup_hash') == hash) {
       await db.setSetting('cloud_backup_error', '');
+      await db.setSetting('cloud_backup_checked', now);
       return;
     }
     if (bytes.length > 20 * 1024 * 1024) {
@@ -665,6 +711,7 @@ class CloudService implements ExportRepository {
     );
     await db.setSetting('cloud_backup_hash', hash);
     await db.setSetting('cloud_backup_error', '');
+    await db.setSetting('cloud_backup_checked', now);
     await db.setSetting(
       'cloud_backup_last',
       DateTime.now().toUtc().toIso8601String(),
@@ -673,16 +720,16 @@ class CloudService implements ExportRepository {
 
   Future<void> restoreOwnCloudBackup() async {
     if (featuresVersion < 4 ||
-        (await db.products()).isNotEmpty ||
-        (await db.consumptions()).isNotEmpty ||
-        (await db.records('batch')).isNotEmpty ||
-        (await db.records('export_receipt')).isNotEmpty ||
+        await db.hasRecords('product') ||
+        await db.hasRecords('consumption') ||
+        await db.hasRecords('batch') ||
+        await db.hasRecords('export_receipt') ||
         (await db.pending()).isNotEmpty) {
       return;
     }
     final rows =
         await _request(
-              '/rest/v1/device_backups?store_id=eq.${await db.setting('store')}&actor=eq.$userId&select=payload,hash&order=revision.desc&limit=1',
+              '/rest/v1/device_backups?store_id=eq.${_q(await db.setting('store'))}&actor=eq.${_q(userId)}&select=payload,hash&order=revision.desc&limit=1',
             )
             as List;
     if (rows.isEmpty) return;
@@ -780,7 +827,7 @@ class CloudService implements ExportRepository {
     }
     final rows =
         await _request(
-              '/rest/v1/device_backups?store_id=eq.${await db.setting('store')}&actor=eq.$actor&device_id=eq.$device&hash=eq.$hash&select=payload',
+              '/rest/v1/device_backups?store_id=eq.${_q(await db.setting('store'))}&actor=eq.${_q(actor)}&device_id=eq.${_q(device)}&hash=eq.${_q(hash)}&select=payload',
             )
             as List;
     if (rows.isEmpty) throw const CloudException('Backup não encontrado.');
@@ -799,7 +846,7 @@ class CloudService implements ExportRepository {
       while (true) {
         final page =
             await _request(
-                  '/rest/v1/entities?store_id=eq.$store&kind=eq.$kind&select=id&order=id.asc&limit=200${cursor == null ? '' : '&id=gt.$cursor'}',
+                  '/rest/v1/entities?store_id=eq.${_q(store)}&kind=eq.${_q(kind)}&select=id&order=id.asc&limit=200${cursor == null ? '' : '&id=gt.${_q(cursor)}'}',
                 )
                 as List;
         for (final row in page) {
@@ -839,7 +886,7 @@ class CloudService implements ExportRepository {
     while (true) {
       final page =
           await _request(
-                '/rest/v1/export_batches?store_id=eq.$store&select=id,body,revision&revision=gt.$cursor&order=revision.asc&limit=20',
+                '/rest/v1/export_batches?store_id=eq.${_q(store)}&select=id,body,revision&revision=gt.${_q(cursor)}&order=revision.asc&limit=20',
               )
               as List;
       for (final r in page) {
@@ -858,7 +905,7 @@ class CloudService implements ExportRepository {
     final store = await db.setting('store');
     final rows =
         await _request(
-              '/rest/v1/entities?store_id=eq.$store&kind=eq.$kind&id=eq.$id&select=body,sector_id,export_locked',
+              '/rest/v1/entities?store_id=eq.${_q(store)}&kind=eq.${_q(kind)}&id=eq.${_q(id)}&select=body,sector_id,export_locked',
             )
             as List;
     await db.resolveWithRemote(

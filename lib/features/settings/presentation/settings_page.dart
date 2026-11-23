@@ -186,7 +186,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Backup automático local: intervalo de 7 dias, durante o uso do aplicativo, mantendo até 4 cópias. Na nuvem: até 2 cópias por aparelho após sincronizar. Ativação, saída/troca de setor e cópias manuais podem criar backups locais adicionais.',
+                        'Backup automático local: intervalo de 7 dias, durante o uso do aplicativo, mantendo até 4 cópias. Na nuvem: até 2 cópias por aparelho, verificadas após sincronizar no máximo a cada 30 minutos. Ativação, saída/troca de setor e cópias manuais podem criar backups locais adicionais.',
                       ),
                       FutureBuilder<List<String?>>(
                         future: Future.wait(
@@ -402,7 +402,7 @@ class _SettingsPageState extends State<SettingsPage> {
       await action();
       if (mounted) setState(() => feedback = success);
     } catch (e) {
-      if (mounted) setState(() => feedback = e.toString());
+      if (mounted) setState(() => feedback = friendlyError(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }

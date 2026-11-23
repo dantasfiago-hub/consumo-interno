@@ -135,6 +135,7 @@ class LocalDatabase extends GeneratedDatabase {
       'favorites',
       'recent_products',
       'admin_password_required',
+      'cloud_backup_checked',
     ]) {
       await customStatement('DELETE FROM settings WHERE key=?', [key]);
     }
@@ -147,6 +148,11 @@ class LocalDatabase extends GeneratedDatabase {
     'SELECT body FROM records WHERE kind=? ORDER BY rowid DESC',
     variables: [Variable.withString(kind)],
   ).get()).map((r) => decodeObject(r.read<String>('body'))).toList();
+  /// Cheap emptiness check; avoids decoding every record of the kind.
+  Future<bool> hasRecords(String kind) async => (await customSelect(
+    'SELECT 1 FROM records WHERE kind=? LIMIT 1',
+    variables: [Variable.withString(kind)],
+  ).get()).isNotEmpty;
   Future<Json?> record(String kind, String id) async {
     final r = await customSelect(
       'SELECT body FROM records WHERE kind=? AND id=?',
@@ -203,11 +209,15 @@ class LocalDatabase extends GeneratedDatabase {
       throw ArgumentError.value(sectorId, 'sectorId', 'Setor inválido.');
     }
     final variables = <Variable>[];
-    var condition = '';
-    if (sectorId != null) {
+    final pagination = limit != null || offset > 0 ? ' LIMIT ? OFFSET ?' : '';
+    String select;
+    if (sectorId == null) {
+      select = "SELECT body FROM records WHERE kind='consumption'";
+    } else {
       // Preserve the legacy display-name fallback used by Consumption.sectorId.
-      var legacy = "lower(json_extract(body, '\$.sector'))";
-      for (final whitespace in [
+      // The normalization is chained through CTEs: SQLite builds before 3.51
+      // stop with "parser stack overflow" at about 26 nested function calls.
+      const separators = [
         ' ',
         '\t',
         '\n',
@@ -235,14 +245,27 @@ class LocalDatabase extends GeneratedDatabase {
         '\ufeff',
         '_',
         '-',
-      ]) {
-        legacy = "replace($legacy, '$whitespace', '')";
+      ];
+      const chunk = 6;
+      final stages = <String>[];
+      for (var start = 0; start < separators.length; start += chunk) {
+        final number = stages.length + 1;
+        var expression = number == 1
+            ? "lower(json_extract(body, '\$.sector'))"
+            : 'v';
+        for (final separator in separators.skip(start).take(chunk)) {
+          expression = "replace($expression, '$separator', '')";
+        }
+        final source = number == 1
+            ? "records WHERE kind='consumption'"
+            : 's${number - 1}';
+        stages.add('s$number(body, id, v) AS (SELECT body, id, $expression FROM $source)');
       }
-      condition =
-          " AND coalesce(json_extract(body, '\$._sector_id'), $legacy)=?";
+      select =
+          'WITH ${stages.join(', ')} SELECT body FROM s${stages.length} '
+          "WHERE coalesce(json_extract(body, '\$._sector_id'), v)=?";
       variables.add(Variable.withString(sectorId));
     }
-    final pagination = limit != null || offset > 0 ? ' LIMIT ? OFFSET ?' : '';
     if (pagination.isNotEmpty) {
       variables.addAll([
         Variable.withInt(limit ?? -1),
@@ -250,7 +273,7 @@ class LocalDatabase extends GeneratedDatabase {
       ]);
     }
     final rows = await customSelect(
-      "SELECT body FROM records WHERE kind='consumption'$condition ORDER BY json_extract(body, '\$.created_at') DESC, id DESC$pagination",
+      "$select ORDER BY json_extract(body, '\$.created_at') DESC, id DESC$pagination",
       variables: variables,
     ).get();
     return rows
@@ -693,10 +716,12 @@ class LocalDatabase extends GeneratedDatabase {
       for (final p in products) {
         await _put('product', p.toJson());
       }
-      for (final c in consumptions) {
-        final raw = (data['consumptions'] as List).firstWhere(
-          (r) => r['id'] == c.id,
-        );
+      // `consumptions` was decoded from this list in order, so the raw entry
+      // is at the same index (a lookup by id inside the loop was quadratic).
+      final rawConsumptions = data['consumptions'] as List;
+      for (var n = 0; n < consumptions.length; n++) {
+        final c = consumptions[n];
+        final raw = rawConsumptions[n];
         await _put('consumption', {
           ...c.toJson(),
           if (raw['_sector_id'] != null) '_sector_id': raw['_sector_id'],

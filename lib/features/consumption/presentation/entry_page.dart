@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'quantity_fields.dart';
 import 'sum_number_field.dart';
 import '../../../core/formatting/sum_expression.dart';
+import '../../../core/formatting/search.dart';
 import '../../../core/access/sectors.dart';
 
 import 'package:intl/intl.dart';
@@ -19,19 +20,37 @@ class EntryPage extends StatefulWidget {
   State<EntryPage> createState() => _EntryPageState();
 }
 
-class _EntryPageState extends State<EntryPage> {
+class _EntryPageState extends State<EntryPage> with WidgetsBindingObserver {
   final sector = TextEditingController(), note = TextEditingController();
   final List<ConsumptionItem> items = [];
   DateTime date = DateUtils.dateOnly(DateTime.now());
+  bool dateChosen = false;
+  int sectorRevision = 0;
   bool busy = false;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (!widget.state.canManage) sector.text = widget.state.sectorId;
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _followToday();
+  }
+
+  // A tablet left open overnight must not keep launching on yesterday's date
+  // unless someone chose that date on purpose or a launch is in progress.
+  void _followToday() {
+    final today = DateUtils.dateOnly(DateTime.now());
+    if (mounted && !dateChosen && items.isEmpty && date != today) {
+      setState(() => date = today);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     sector.dispose();
     note.dispose();
     super.dispose();
@@ -74,7 +93,10 @@ class _EntryPageState extends State<EntryPage> {
                                     lastDate: DateTime.now(),
                                   );
                                   if (d != null && mounted) {
-                                    setState(() => date = d);
+                                    setState(() {
+                                      date = d;
+                                      dateChosen = true;
+                                    });
                                   }
                                 },
                         ),
@@ -83,6 +105,7 @@ class _EntryPageState extends State<EntryPage> {
                         width: 260,
                         child: widget.state.canManage
                             ? DropdownButtonFormField<String>(
+                                key: ValueKey('${sector.text}-$sectorRevision'),
                                 initialValue: sectorKey(sector.text),
                                 decoration: const InputDecoration(
                                   labelText: 'Setor *',
@@ -95,12 +118,7 @@ class _EntryPageState extends State<EntryPage> {
                                       ),
                                     )
                                     .toList(),
-                                onChanged: busy
-                                    ? null
-                                    : (v) => setState(() {
-                                        sector.text = v!;
-                                        items.clear();
-                                      }),
+                                onChanged: busy ? null : _changeSector,
                               )
                             : InputDecorator(
                                 decoration: const InputDecoration(
@@ -296,6 +314,41 @@ class _EntryPageState extends State<EntryPage> {
     }
   }
 
+  Future<void> _changeSector(String? value) async {
+    if (value == null || value == sectorKey(sector.text)) return;
+    if (items.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Trocar de setor?'),
+          content: const Text(
+            'Os itens já adicionados serão removidos, porque cada setor tem os próprios produtos.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Trocar setor'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (confirmed != true) {
+        // Rebuild the dropdown so it shows the sector that is still selected.
+        setState(() => sectorRevision++);
+        return;
+      }
+    }
+    setState(() {
+      sector.text = value;
+      items.clear();
+    });
+  }
+
   Future<void> _save() async {
     if (busy || items.isEmpty) return;
     setState(() => busy = true);
@@ -326,6 +379,14 @@ class _EntryPageState extends State<EntryPage> {
               Text(
                 '${sectorLabel(c.sector)} · ${DateFormat('dd/MM/yyyy').format(date)}',
               ),
+              if (date != DateUtils.dateOnly(DateTime.now()))
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Atenção: a data do lançamento não é a de hoje.',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
               const SizedBox(height: 12),
               for (final item in c.items)
                 Padding(
@@ -357,11 +418,13 @@ class _EntryPageState extends State<EntryPage> {
         setState(() {
           items.clear();
           note.clear();
+          dateChosen = false;
+          date = DateUtils.dateOnly(DateTime.now());
         });
         message(context, 'Lançamento salvo no dispositivo.');
       }
     } catch (e) {
-      if (mounted) message(context, e.toString());
+      if (mounted) message(context, friendlyError(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -427,8 +490,8 @@ class _ItemPickerState extends State<ItemPicker> {
               (p) =>
                   (!onlyFavorites || widget.favorites.contains(p.id)) &&
                   (!onlyRecent || widget.recent.contains(p.id)) &&
-                  '${p.code} ${p.description}'.toLowerCase().contains(
-                    search.toLowerCase(),
+                  normalizeSearch('${p.code} ${p.description}').contains(
+                    normalizeSearch(search),
                   ),
             )
             .toList()
@@ -586,10 +649,7 @@ class _ItemPickerState extends State<ItemPicker> {
                 );
               } catch (e) {
                 setState(
-                  () => error = e.toString().replaceFirst(
-                    'FormatException: ',
-                    '',
-                  ),
+                  () => error = friendlyError(e),
                 );
               }
             },

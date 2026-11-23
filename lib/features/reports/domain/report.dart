@@ -1,6 +1,7 @@
 import '../../../core/access/sectors.dart';
 import '../../consumption/domain/consumption.dart';
 import '../../../core/formatting/numbers.dart';
+import '../../../core/formatting/search.dart';
 
 class ReportFilter {
   String query = '',
@@ -17,12 +18,13 @@ class ReportFilter {
         (status.isEmpty || c.status == status) &&
         (sectorKey(sector) != null
             ? c.sectorId == sectorKey(sector)
-            : sectorLabel(c.assignedSector ?? c.sector)
-                  .toLowerCase()
-                  .contains(sector.toLowerCase())) &&
-        c.operatorName.toLowerCase().contains(operatorName.toLowerCase()) &&
-        '${i.code} ${i.description}'.toLowerCase().contains(
-          query.toLowerCase(),
+            : normalizeSearch(sectorLabel(c.assignedSector ?? c.sector))
+                  .contains(normalizeSearch(sector))) &&
+        normalizeSearch(c.operatorName).contains(
+          normalizeSearch(operatorName),
+        ) &&
+        normalizeSearch('${i.code} ${i.description}').contains(
+          normalizeSearch(query),
         ) &&
         (unit.isEmpty || i.unit == unit) &&
         (minCents == null || i.totalCents >= minCents!) &&
