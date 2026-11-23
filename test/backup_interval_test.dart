@@ -162,7 +162,9 @@ void main() {
         ]);
       }
       final files =
-          (await copies()).where((f) => f.path != unrelated.path).toList()
+          (await copies())
+              .where((f) => f.uri.pathSegments.last != 'consumo_manual.json')
+              .toList()
             ..sort((a, b) => a.path.compareTo(b.path));
       expect(files, hasLength(4));
       expect(

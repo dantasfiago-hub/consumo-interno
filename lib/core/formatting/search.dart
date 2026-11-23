@@ -1,5 +1,3 @@
-/// Lower-cases and removes common Portuguese diacritics so that searching for
-/// "maca" finds "Maçã". Only used for filtering; stored text is never changed.
 String normalizeSearch(String text) {
   const from = 'áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ';
   const to = 'aaaaaeeeeiiiiooooouuuucnAAAAAEEEEIIIIOOOOOUUUUCN';
