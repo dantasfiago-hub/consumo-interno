@@ -1,3 +1,4 @@
+import '../../../core/access/sectors.dart';
 import '../domain/export.dart';
 import '../../reports/domain/report.dart';
 import '../../../core/types/json.dart';
@@ -27,7 +28,11 @@ List<ExportRow> groupForExport(List<ReportRow> rows) {
     if (!seen.add('${r.consumption.id}/${r.item.id}')) continue;
     final i = r.item;
     if (i.amount <= 0 ||
-        i.totalCents <= 0 ||
+        i.totalCents < 0 ||
+        (i.totalCents == 0 &&
+            sectorRequiresPrice(
+              r.consumption.sectorId ?? r.consumption.sector,
+            )) ||
         !['UN', 'KG'].contains(i.unit) ||
         (i.unit == 'UN' && i.amount % 1000 != 0)) {
       throw const FormatException(

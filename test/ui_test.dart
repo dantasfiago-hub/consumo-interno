@@ -134,7 +134,8 @@ void main() {
           await tester.pumpAndSettle();
           await tester.enterText(field('Quilogramas (kg)'), '1+1');
           await tester.enterText(field('Gramas (g)'), '200+150');
-          await tester.enterText(field('Valor total (R\$)'), '30,10+40.40');
+          // Padaria registra somente a quantidade: não há campo de valor.
+          expect(find.text('Valor total (R\$)'), findsNothing);
           await tester.pumpAndSettle();
           await renderPreview(
             tester,
@@ -173,7 +174,7 @@ void main() {
             find.widgetWithText(FilledButton, 'Confirmar lançamento'),
           );
           await tester.pumpAndSettle();
-          expect(state.consumptions.single.totalCents, 7050);
+          expect(state.consumptions.single.totalCents, 0);
           expect(state.consumptions.single.items.single.amount, 2350);
           expect(state.pending.length, 4);
           await tester.tap(find.text('Histórico'));
