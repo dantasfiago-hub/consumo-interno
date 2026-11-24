@@ -327,7 +327,9 @@ class LocalDatabase extends GeneratedDatabase {
     }
     for (final i in c.items) {
       if (i.amount <= 0 ||
-          i.totalCents <= 0 ||
+          i.totalCents < 0 ||
+          (i.totalCents == 0 &&
+              sectorRequiresPrice(c.sectorId ?? c.sector)) ||
           i.amount > 999999999999 ||
           i.totalCents > 999999999999 ||
           !['UN', 'KG'].contains(i.unit) ||

@@ -59,14 +59,20 @@ class _EntryPageState extends State<EntryPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final total = items.fold<int>(0, (s, i) => s + i.totalCents);
+    // Only Horti Fruti records a price; Cozinha and Padaria record quantity.
+    final priced = sectorRequiresPrice(
+      widget.state.canManage ? sector.text : widget.state.sectorId,
+    );
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageTitle(
+          PageTitle(
             'Novo lançamento',
-            'Informe a quantidade e o valor total de cada produto.',
+            priced
+                ? 'Informe a quantidade e o valor total de cada produto.'
+                : 'Informe a quantidade de cada produto.',
           ),
           Card(
             child: Padding(
@@ -190,12 +196,15 @@ class _EntryPageState extends State<EntryPage> with WidgetsBindingObserver {
                               ],
                             ),
                           ),
-                          Text(
-                            money(item.totalCents),
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          if (priced)
+                            Text(
+                              money(item.totalCents),
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           IconButton(
-                            tooltip: 'Editar quantidade e valor',
+                            tooltip: priced
+                                ? 'Editar quantidade e valor'
+                                : 'Editar quantidade',
                             onPressed: busy ? null : () => _editItem(item),
                             icon: const Icon(Icons.edit_outlined),
                           ),
@@ -215,6 +224,7 @@ class _EntryPageState extends State<EntryPage> with WidgetsBindingObserver {
                       icon: Icon(Icons.add),
                       label: Text('Adicionar produto'),
                     ),
+                  if (priced) ...[
                   const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(18),
@@ -243,6 +253,7 @@ class _EntryPageState extends State<EntryPage> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
+                  ],
                   const SizedBox(height: 18),
                   Wrap(
                     spacing: 16,
@@ -293,6 +304,7 @@ class _EntryPageState extends State<EntryPage> with WidgetsBindingObserver {
         favorites: widget.state.favorites,
         recent: widget.state.recentProducts,
         initialItem: existing,
+        requiresPrice: sectorRequiresPrice(selectedSector),
       ),
     );
     if (item != null && mounted) {
@@ -392,10 +404,11 @@ class _EntryPageState extends State<EntryPage> with WidgetsBindingObserver {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    '${item.code} · ${item.description}\n${quantity(item.amount, item.unit)} ${item.unit} · ${money(item.totalCents)}',
+                    '${item.code} · ${item.description}\n${quantity(item.amount, item.unit)} ${item.unit}${sectorRequiresPrice(c.sectorId ?? c.sector) ? ' · ${money(item.totalCents)}' : ''}',
                   ),
                 ),
-              Text('Total: ${money(c.totalCents)}'),
+              if (sectorRequiresPrice(c.sectorId ?? c.sector))
+                Text('Total: ${money(c.totalCents)}'),
               const SizedBox(height: 12),
               const Text('Confirma o lançamento deste consumo?'),
             ],
@@ -436,12 +449,15 @@ class ItemPicker extends StatefulWidget {
   final Set<String> favorites;
   final List<String> recent;
   final ConsumptionItem? initialItem;
+  // False for sectors that record quantity only (Cozinha and Padaria).
+  final bool requiresPrice;
   const ItemPicker({
     super.key,
     required this.products,
     this.favorites = const {},
     this.recent = const [],
     this.initialItem,
+    this.requiresPrice = true,
   });
   @override
   State<ItemPicker> createState() => _ItemPickerState();
@@ -593,14 +609,17 @@ class _ItemPickerState extends State<ItemPicker> {
                       whole: amount,
                       grams: grams,
                     ),
-                    const SizedBox(height: 16),
-                    SumNumberField(
-                      controller: total,
-                      label: 'Valor total (R\$)',
-                      decimals: 2,
-                      format: money,
-                      helper: 'Total do produto. Você pode somar: 10,50+20+5.',
-                    ),
+                    if (widget.requiresPrice) ...[
+                      const SizedBox(height: 16),
+                      SumNumberField(
+                        controller: total,
+                        label: 'Valor total (R\$)',
+                        decimals: 2,
+                        format: money,
+                        helper:
+                            'Total do produto. Você pode somar: 10,50+20+5.',
+                      ),
+                    ],
                     if (error.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
@@ -634,7 +653,10 @@ class _ItemPickerState extends State<ItemPicker> {
                 final q = p.unit == 'KG'
                     ? parseSumWeightParts(amount.text, grams.text)
                     : parseSumQuantity(amount.text, p.unit);
-                final cents = parseSumScaled(total.text, 2);
+                // Quantity-only sectors keep whatever value an older entry had.
+                final cents = widget.requiresPrice
+                    ? parseSumScaled(total.text, 2)
+                    : (widget.initialItem?.totalCents ?? 0);
                 Navigator.pop(
                   context,
                   ConsumptionItem(

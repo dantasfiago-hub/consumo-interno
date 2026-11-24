@@ -88,7 +88,7 @@ Future<Uint8List> reportPdf(
                         s.description,
                         s.unit,
                         quantity(s.amount, s.unit),
-                        money(s.totalCents),
+                        s.totalCents > 0 ? money(s.totalCents) : '-',
                         '${s.consumptionCount}',
                         s.status == 'confirmed' ? 'Confirmado' : 'Cancelado',
                       ],
@@ -102,7 +102,7 @@ Future<Uint8List> reportPdf(
                         r.item.description,
                         r.item.unit,
                         quantity(r.item.amount, r.item.unit),
-                        money(r.item.totalCents),
+                        r.item.totalCents > 0 ? money(r.item.totalCents) : '-',
                         sectorLabel(
                           r.consumption.assignedSector ?? r.consumption.sector,
                         ),

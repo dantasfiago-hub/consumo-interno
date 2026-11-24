@@ -6,6 +6,12 @@ Do mais recente para o mais antigo. Para instalar ou atualizar, siga [LEIA_PRIME
 
 Correções propostas após revisão do repositório; ainda não compiladas nem publicadas. Nenhuma altera dados existentes.
 
+### Novidade
+- **Cozinha e Padaria lançam só a quantidade.** O campo "Valor total" deixa de aparecer nesses setores; o item é gravado com valor 0. Horti Fruti continua exigindo o valor.
+  - Nova migração `013_quantity_only_sectors.sql`: o servidor passa a aceitar total 0 em Cozinha e Padaria (Horti Fruti segue exigindo valor positivo) e a gerar o arquivo de exportação desses setores (código e quantidade) mesmo com itens sem valor.
+  - Lançamentos antigos mantêm o valor que já tinham. No histórico e nos relatórios, itens sem valor aparecem sem preço ("-" nos relatórios); a confirmação do lançamento deixa de mostrar o total nesses setores.
+  - Novos testes: `tests_backend/quantity_only_v13_test.mjs` (migração 013, antes e depois, e exportação) e testes Dart de validação e preço unitário; o teste de interface de Padaria foi ajustado (sem campo de valor, total 0).
+
 ### Correções
 - **Migração 012** idempotente (`add column if not exists`, `create index if not exists`): antes falhava em instalação nova porque o `schema.sql` já contém a coluna `revision`. Passo documentado em [LEIA_PRIMEIRO.md](LEIA_PRIMEIRO.md). Novo teste `tests_backend/fresh_install_v12_test.mjs` aplica `schema.sql` e todas as migrações em ordem e repete a 012.
 - **Backup na nuvem** avaliado no máximo a cada 30 minutos (`_cloudBackupInterval`), em vez de serializar o banco inteiro a cada sincronização.
@@ -22,7 +28,7 @@ Correções propostas após revisão do repositório; ainda não compiladas nem 
 - Criado este `CHANGELOG.md`, que reúne o histórico antes espalhado pelo README e por `LEIA_PRIMEIRO.md`. `LEIA_PRIMEIRO.md` passa a ser apenas o guia de instalação e atualização.
 
 ### Para quem atualiza
-Em loja existente, execute a migração 012 se ainda não executou. Recompile todos os aparelhos. O tempo de desbloqueio da senha administrativa deve ser medido no aparelho mais lento (`adminPasswordIterations`).
+**Execute a migração 013 no Supabase antes de distribuir o aplicativo novo.** Sem ela, o servidor recusa os lançamentos de Cozinha e Padaria sem valor, e a sincronização desses aparelhos fica com pendência. Em loja existente, execute também a 012 se ainda não executou. Recompile todos os aparelhos. O tempo de desbloqueio da senha administrativa deve ser medido no aparelho mais lento (`adminPasswordIterations`).
 
 ## 1.7.6+17 e alterações sem mudança de número
 

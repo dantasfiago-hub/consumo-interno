@@ -14,13 +14,14 @@ Execute no SQL Editor, na ordem. Não reaplique `schema.sql` nem `setup_sector_d
 | 010 `backup_retention` | Retenção de duas cópias remotas por aparelho (remove as excedentes) |
 | 011 `admin_device_listing` | Metadados para a lista administrativa de aparelhos ([guia](docs/GESTAO_APARELHOS.md)) |
 | 012 `incremental_batch_sync` | Coluna `revision` em `export_batches`; o aplicativo atual a lê. Idempotente: em loja nova o `schema.sql` já a contém e a 012 não altera nada |
+| 013 `quantity_only_sectors` | Cozinha e Padaria passam a lançar só a quantidade (total 0). **Execute antes de distribuir o aplicativo novo** |
 
 ### Supabase existente
-Execute somente as migrações posteriores à última que já aplicou, em ordem. Exemplo: se a última foi a 009, execute 010, 011 e 012. Se foi a 007, execute de 008 a 012.
+Execute somente as migrações posteriores à última que já aplicou, em ordem. Exemplo: se a última foi a 009, execute de 010 a 013. Se foi a 007, execute de 008 a 013.
 
 ### Supabase novo
 1. Crie o projeto e habilite Authentication → Allow anonymous sign-ins.
-2. Execute `schema.sql` e todas as migrações 002 a 012, nessa ordem.
+2. Execute `schema.sql` e todas as migrações 002 a 013, nessa ordem.
 3. Execute uma única vez `setup_sector_devices.sql`, alterando o nome da loja. Guarde o UUID e os códigos iniciais de uso único, válidos por 24 horas.
 4. Ative o aparelho administrativo. Sem configuração incorporada, preencha URL HTTPS, chave pública e UUID da loja, junto com o código administrativo. Defina a senha local.
 5. Na administração, gere códigos/QRs para os demais aparelhos. Cada aparelho tem um código próprio; pode haver várias máquinas por setor e vários administradores.
@@ -42,7 +43,7 @@ Os testes de backend (`tests_backend`, `npm ci && npm test`) aplicam `schema.sql
 
 ## Como o aplicativo é operado
 
-- Os setores acessam apenas lançamento/cancelamento e seus produtos.
+- Os setores acessam apenas lançamento/cancelamento e seus produtos. Cozinha e Padaria informam só a quantidade; Horti Fruti informa quantidade e valor total.
 - A exportação administrativa reúne registros sincronizados por setor, ignorando os já reservados/exportados. Cozinha e Padaria exportam código e quantidade; Horti Fruti mantém os quatro campos. Sincronize todas as máquinas antes de exportar.
 - Para trocar de setor ou de loja, use **Sair ou trocar de setor** e um novo código autorizado. A saída exige sincronização concluída e backup local. Os dados antigos permanecem na nuvem e na cópia local; rascunhos ainda não lançados são descartados com confirmação. Não apague banco ou credenciais para contornar pendências.
 - Backups: até quatro cópias locais por vínculo (intervalo automático semanal) e duas na nuvem por aparelho; a nuvem é verificada no máximo a cada 30 minutos após sincronizar.

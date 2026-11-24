@@ -92,9 +92,12 @@ String scaledText(
 }
 
 BigInt unitPrice4(BigInt totalCents, BigInt quantityMilli) {
-  if (totalCents <= BigInt.zero || quantityMilli <= BigInt.zero) {
+  // A total of zero is only possible for quantity-only sectors; their file
+  // does not contain a price, so the unit price is simply zero.
+  if (totalCents < BigInt.zero || quantityMilli <= BigInt.zero) {
     throw const FormatException('Quantidade e valor devem ser positivos.');
   }
+  if (totalCents == BigInt.zero) return BigInt.zero;
   final numerator = totalCents * BigInt.from(100000);
   final remainder = numerator % quantityMilli;
   return numerator ~/ quantityMilli +

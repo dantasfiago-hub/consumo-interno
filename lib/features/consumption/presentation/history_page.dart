@@ -95,7 +95,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                 : Icons.receipt_long_outlined,
                           ),
                           title: Text(
-                            '${c.date.split('-').reversed.join('/')} · ${money(c.totalCents)}',
+                            '${c.date.split('-').reversed.join('/')}${c.totalCents > 0 ? ' · ${money(c.totalCents)}' : ''}',
                           ),
                           subtitle: Text(
                             '${c.operatorName}${c.sector.isEmpty ? '' : ' · ${sectorLabel(c.assignedSector ?? c.sector)}'}\n${c.status == 'cancelled' ? 'Cancelado · ' : ''}${pending ? 'Envio pendente' : 'Sincronizado'}',
@@ -107,7 +107,9 @@ class _HistoryPageState extends State<HistoryPage> {
                                 subtitle: Text(
                                   '${quantity(i.amount, i.unit)} ${i.unit}',
                                 ),
-                                trailing: Text(money(i.totalCents)),
+                                trailing: i.totalCents > 0
+                                    ? Text(money(i.totalCents))
+                                    : null,
                               ),
                             if (c.note.isNotEmpty)
                               ListTile(
