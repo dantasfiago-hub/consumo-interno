@@ -52,6 +52,10 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("production")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             if (project.findProperty("target-platform") == "android-arm64") {
                 ndk {
                     abiFilters.clear()
