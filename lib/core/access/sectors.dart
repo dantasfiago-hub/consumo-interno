@@ -10,7 +10,6 @@ String? sectorKey(String value) =>
       'padaria' => 'padaria',
       _ => null,
     };
-
 bool sectorRequiresPrice(String? sector) =>
     sector != null && sectorKey(sector) == 'hortifruti';
 

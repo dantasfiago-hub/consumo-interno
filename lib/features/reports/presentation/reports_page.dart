@@ -318,7 +318,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     subtitle: Text(
                       '${quantity(s.amount, s.unit)} ${s.unit} · ${s.consumptionCount} lançamento(s) · ${s.status == 'confirmed' ? 'Confirmado' : 'Cancelado'}',
                     ),
-                    trailing: Text(money(s.totalCents)),
+                    trailing: Text(s.totalCents > 0 ? money(s.totalCents) : '—'),
                   ),
                 ),
               )
@@ -330,7 +330,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     subtitle: Text(
                       '${r.consumption.date.split('-').reversed.join('/')} · ${quantity(r.item.amount, r.item.unit)} ${r.item.unit}\n${r.consumption.operatorName} · ${sectorLabel(r.consumption.assignedSector ?? r.consumption.sector)}${r.consumption.status == 'cancelled' ? ' · Cancelado' : ''}',
                     ),
-                    trailing: Text(money(r.item.totalCents)),
+                    trailing: Text(r.item.totalCents > 0 ? money(r.item.totalCents) : '—'),
                   ),
                 ),
               ),
@@ -418,7 +418,7 @@ class _ReportsPageState extends State<ReportsPage> {
       );
       if (mounted && path != null) message(context, 'Arquivo exportado.');
     } catch (e) {
-      if (mounted) message(context, e.toString());
+      if (mounted) message(context, friendlyError(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }

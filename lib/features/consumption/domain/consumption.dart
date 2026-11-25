@@ -120,7 +120,8 @@ void validateConsumption(Consumption c) {
         i.description.trim().isEmpty ||
         i.description.length > 150 ||
         i.amount <= 0 ||
-        i.totalCents <= 0 ||
+        i.totalCents < 0 ||
+        (i.totalCents == 0 && sectorRequiresPrice(c.sectorId ?? c.sector)) ||
         i.amount > 999999999999 ||
         i.totalCents > 999999999999 ||
         !['UN', 'KG'].contains(i.unit) ||

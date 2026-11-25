@@ -43,7 +43,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
         await run(widget.state.admin.refresh);
       }
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = friendlyError(e));
     }
   }
 
@@ -55,7 +55,7 @@ class _AdministrationPageState extends State<AdministrationPage> {
     try {
       await widget.state.runAdministration(action);
     } catch (e) {
-      if (mounted) setState(() => error = e.toString());
+      if (mounted) setState(() => error = friendlyError(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }

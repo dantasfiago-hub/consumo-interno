@@ -1,8 +1,9 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../domain/models.dart';
 
+/// Text that is safe to show to a person: no Dart exception prefixes.
 String friendlyError(Object error) {
   if (error is TimeoutException) {
     return 'Tempo esgotado. Verifique a conexão e tente novamente.';
@@ -29,7 +30,7 @@ Future<void> guarded(
     await action();
   } catch (e) {
     if (context.mounted) {
-      message(context, e.toString().replaceFirst('Bad state: ', ''));
+      message(context, friendlyError(e));
     }
   }
 }
