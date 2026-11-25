@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'quantity_fields.dart';
@@ -11,10 +13,22 @@ import '../../../app/app_state.dart';
 import '../../../infrastructure/local/database.dart';
 import '../../../domain/models.dart';
 import '../../../core/widgets/common.dart';
+import '../label/application/scale_label_service.dart';
+import '../label/domain/scale_label.dart';
+import '../label/presentation/label_review_dialog.dart';
+import '../label/presentation/label_scanner.dart';
+import '../label/presentation/label_text_recognizer.dart';
 
 class EntryPage extends StatefulWidget {
   final AppState state;
-  const EntryPage({super.key, required this.state});
+  final LabelScanner? labelScanner;
+  final LabelTextRecognizer? labelTextRecognizer;
+  const EntryPage({
+    super.key,
+    required this.state,
+    this.labelScanner,
+    this.labelTextRecognizer,
+  });
   @override
   State<EntryPage> createState() => _EntryPageState();
 }
@@ -22,6 +36,7 @@ class EntryPage extends StatefulWidget {
 class _EntryPageState extends State<EntryPage> {
   final sector = TextEditingController(), note = TextEditingController();
   final List<ConsumptionItem> items = [];
+  final Set<String> scannedBarcodes = {};
   DateTime date = DateUtils.dateOnly(DateTime.now());
   bool busy = false;
   @override
@@ -40,14 +55,20 @@ class _EntryPageState extends State<EntryPage> {
   @override
   Widget build(BuildContext context) {
     final total = items.fold<int>(0, (s, i) => s + i.totalCents);
+    final selectedSector = widget.state.canManage
+        ? sectorKey(sector.text)
+        : widget.state.sectorId;
+    final requiresPrice = sectorRequiresPrice(selectedSector);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageTitle(
+          PageTitle(
             'Novo lançamento',
-            'Informe a quantidade e o valor total de cada produto.',
+            requiresPrice
+                ? 'Informe a quantidade e o valor total de cada produto.'
+                : 'Informe a quantidade de cada produto.',
           ),
           Card(
             child: Padding(
@@ -100,6 +121,7 @@ class _EntryPageState extends State<EntryPage> {
                                     : (v) => setState(() {
                                         sector.text = v!;
                                         items.clear();
+                                        scannedBarcodes.clear();
                                       }),
                               )
                             : InputDecorator(
@@ -172,12 +194,15 @@ class _EntryPageState extends State<EntryPage> {
                               ],
                             ),
                           ),
-                          Text(
-                            money(item.totalCents),
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          if (requiresPrice)
+                            Text(
+                              money(item.totalCents),
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           IconButton(
-                            tooltip: 'Editar quantidade e valor',
+                            tooltip: requiresPrice
+                                ? 'Editar quantidade e valor'
+                                : 'Editar quantidade',
                             onPressed: busy ? null : () => _editItem(item),
                             icon: const Icon(Icons.edit_outlined),
                           ),
@@ -197,34 +222,36 @@ class _EntryPageState extends State<EntryPage> {
                       icon: Icon(Icons.add),
                       label: Text('Adicionar produto'),
                     ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Total do lançamento',
-                            style: TextStyle(fontSize: 16),
+                  if (requiresPrice) ...[
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Total do lançamento',
+                              style: TextStyle(fontSize: 16),
+                            ),
                           ),
-                        ),
-                        Text(
-                          money(total),
-                          style: TextStyle(
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
+                          Text(
+                            money(total),
+                            style: TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 18),
                   Wrap(
                     spacing: 16,
@@ -266,28 +293,79 @@ class _EntryPageState extends State<EntryPage> {
       message(context, 'Selecione o setor antes dos produtos.');
       return;
     }
-    final item = await showDialog<ConsumptionItem>(
+    ScaleLabelFormat labelFormat;
+    try {
+      final savedFormat = await widget.state.db.setting('scale_label_format');
+      labelFormat = savedFormat == null
+          ? const ScaleLabelFormat()
+          : ScaleLabelFormat.decode(savedFormat);
+    } catch (exception) {
+      if (mounted) message(context, friendlyError(exception));
+      return;
+    }
+    if (!mounted) return;
+    final result = await showDialog<ItemPickerResult>(
       context: context,
       builder: (_) => ItemPicker(
         products: widget.state.products
             .where((p) => p.active && p.sectorIds.contains(selectedSector))
             .toList(),
+        allProducts: widget.state.products,
+        sectorId: selectedSector,
+        labelFormat: labelFormat,
+        scannedBarcodes: scannedBarcodes,
+        labelScanner: widget.labelScanner,
+        labelTextRecognizer: widget.labelTextRecognizer,
         favorites: widget.state.favorites,
         recent: widget.state.recentProducts,
         initialItem: existing,
+        requiresPrice: sectorRequiresPrice(selectedSector),
       ),
     );
-    if (item != null && mounted) {
-      final duplicate = items.any(
+    if (result != null && mounted) {
+      var item = result.item;
+      final duplicateIndex = items.indexWhere(
         (i) => i.productId == item.productId && i.id != existing?.id,
       );
-      if (duplicate) {
-        message(context, 'Esse produto já está no lançamento.');
-        return;
+      if (duplicateIndex >= 0) {
+        if (result.scannedBarcode == null) {
+          message(context, 'Esse produto já está no lançamento.');
+          return;
+        }
+        final sum = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Produto já adicionado'),
+            content: const Text(
+              'Deseja somar à quantidade existente ou cancelar esta etiqueta?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Somar à quantidade existente'),
+              ),
+            ],
+          ),
+        );
+        if (sum != true || !mounted) return;
+        try {
+          item = const ScaleLabelService().combine(items[duplicateIndex], item);
+        } catch (exception) {
+          message(context, friendlyError(exception));
+          return;
+        }
       }
       setState(() {
         if (existing == null) {
-          items.add(item);
+          if (duplicateIndex >= 0) {
+            items[duplicateIndex] = item;
+          } else {
+            items.add(item);
+          }
         } else {
           final index = items.indexWhere((i) => i.id == existing.id);
           if (index >= 0) items[index] = item;
@@ -315,6 +393,7 @@ class _EntryPageState extends State<EntryPage> {
         note: note.text.trim(),
         items: List.of(items),
       );
+      final requiresPrice = sectorRequiresPrice(c.sectorId ?? c.sector);
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -331,10 +410,10 @@ class _EntryPageState extends State<EntryPage> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    '${item.code} · ${item.description}\n${quantity(item.amount, item.unit)} ${item.unit} · ${money(item.totalCents)}',
+                    '${item.code} · ${item.description}\n${quantity(item.amount, item.unit)} ${item.unit}${requiresPrice ? ' · ${money(item.totalCents)}' : ''}',
                   ),
                 ),
-              Text('Total: ${money(c.totalCents)}'),
+              if (requiresPrice) Text('Total: ${money(c.totalCents)}'),
               const SizedBox(height: 12),
               const Text('Confirma o lançamento deste consumo?'),
             ],
@@ -356,29 +435,51 @@ class _EntryPageState extends State<EntryPage> {
       if (mounted) {
         setState(() {
           items.clear();
+          scannedBarcodes.clear();
           note.clear();
         });
         message(context, 'Lançamento salvo no dispositivo.');
       }
     } catch (e) {
-      if (mounted) message(context, e.toString());
+      if (mounted) message(context, friendlyError(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 }
 
+class ItemPickerResult {
+  final ConsumptionItem item;
+  final String? scannedBarcode;
+
+  const ItemPickerResult({required this.item, this.scannedBarcode});
+}
+
 class ItemPicker extends StatefulWidget {
   final List<Product> products;
+  final List<Product> allProducts;
+  final String sectorId;
+  final ScaleLabelFormat labelFormat;
+  final Set<String> scannedBarcodes;
+  final LabelScanner? labelScanner;
+  final LabelTextRecognizer? labelTextRecognizer;
   final Set<String> favorites;
   final List<String> recent;
   final ConsumptionItem? initialItem;
+  final bool requiresPrice;
   const ItemPicker({
     super.key,
     required this.products,
+    required this.allProducts,
+    required this.sectorId,
+    required this.labelFormat,
+    required this.scannedBarcodes,
+    this.labelScanner,
+    this.labelTextRecognizer,
     this.favorites = const {},
     this.recent = const [],
     this.initialItem,
+    this.requiresPrice = true,
   });
   @override
   State<ItemPicker> createState() => _ItemPickerState();
@@ -388,6 +489,7 @@ class _ItemPickerState extends State<ItemPicker> {
   String search = '', error = '';
   bool onlyFavorites = false, onlyRecent = false;
   Product? selected;
+  final barcodeInput = TextEditingController();
   final amount = TextEditingController(),
       grams = TextEditingController(),
       total = TextEditingController();
@@ -397,7 +499,9 @@ class _ItemPickerState extends State<ItemPicker> {
     super.initState();
     final item = widget.initialItem;
     if (item != null) {
-      selected = widget.products.where((p) => p.id == item.productId).firstOrNull;
+      selected = widget.products
+          .where((p) => p.id == item.productId)
+          .firstOrNull;
       if (selected != null) {
         if (item.unit == 'KG') {
           amount.text = (item.amount ~/ 1000).toString();
@@ -406,17 +510,119 @@ class _ItemPickerState extends State<ItemPicker> {
           amount.text = (item.amount ~/ 1000).toString();
           grams.text = '0';
         }
-        total.text = (item.totalCents / 100).toStringAsFixed(2).replaceAll('.', ',');
+        total.text = (item.totalCents / 100)
+            .toStringAsFixed(2)
+            .replaceAll('.', ',');
       }
     }
   }
 
   @override
   void dispose() {
+    barcodeInput.dispose();
     amount.dispose();
     grams.dispose();
     total.dispose();
     super.dispose();
+  }
+
+  Future<void> _scanLabel() async {
+    try {
+      final capture = await (widget.labelScanner ?? MobileLabelScanner()).scan(
+        context,
+      );
+      if (capture != null && mounted) {
+        await _processBarcode(capture.barcode, imageBytes: capture.image);
+      }
+    } catch (exception) {
+      if (mounted) setState(() => error = friendlyError(exception));
+    }
+  }
+
+  Future<void> _readBarcodeInput() =>
+      _processBarcode(barcodeInput.text, imageBytes: null);
+
+  Future<bool> _confirmReadAgain() async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Etiqueta já lida'),
+          content: const Text(
+            'Este mesmo código já foi lido nesta sessão. Deseja continuar?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Continuar'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  Future<void> _processBarcode(
+    String barcode, {
+    required Uint8List? imageBytes,
+  }) async {
+    try {
+      final service = ScaleLabelService(
+        parser: ScaleLabelParser(format: widget.labelFormat),
+      );
+      final parsed = service.parseBarcode(barcode);
+      if (widget.scannedBarcodes.contains(parsed.rawBarcode) &&
+          !await _confirmReadAgain()) {
+        return;
+      }
+      widget.scannedBarcodes.add(parsed.rawBarcode);
+
+      String? recognizedText;
+      String? ocrFailure;
+      if (imageBytes != null) {
+        try {
+          recognizedText =
+              await (widget.labelTextRecognizer ?? createLabelTextRecognizer())
+                  .recognize(imageBytes);
+          if (recognizedText == null || recognizedText.trim().isEmpty) {
+            ocrFailure =
+                'Não foi possível ler o texto da etiqueta. Informe a quantidade manualmente.';
+          }
+        } catch (exception) {
+          ocrFailure =
+              'Falha no OCR: ${friendlyError(exception)} Informe a quantidade manualmente.';
+        }
+      } else {
+        ocrFailure =
+            'Sem imagem para leitura do peso. Informe a quantidade manualmente.';
+      }
+
+      final resolution = service.resolveLabel(
+        label: parsed,
+        products: widget.allProducts,
+        sector: widget.sectorId,
+        printedText: recognizedText,
+      );
+      if (!mounted) return;
+      final item = await showDialog<ConsumptionItem>(
+        context: context,
+        builder: (_) => ScaleLabelReviewDialog(
+          resolution: resolution,
+          requiresPrice: widget.requiresPrice,
+          ocrFailure: ocrFailure,
+        ),
+      );
+      if (item != null && mounted) {
+        Navigator.pop(
+          context,
+          ItemPickerResult(item: item, scannedBarcode: parsed.rawBarcode),
+        );
+      }
+    } catch (exception) {
+      if (mounted) setState(() => error = friendlyError(exception));
+    }
   }
 
   @override
@@ -445,13 +651,22 @@ class _ItemPickerState extends State<ItemPicker> {
                 : a.description.compareTo(b.description);
           });
     return AlertDialog(
-      title: Text(
-        selected == null
-            ? 'Selecionar produto'
-            : widget.initialItem == null
-                ? 'Quantidade e valor'
-                : 'Editar quantidade e valor',
-      ),
+      title: selected == null
+          ? Row(
+              children: [
+                const Expanded(child: Text('Selecionar produto')),
+                OutlinedButton.icon(
+                  onPressed: _scanLabel,
+                  icon: const Icon(Icons.document_scanner_outlined),
+                  label: const Text('Ler etiqueta'),
+                ),
+              ],
+            )
+          : Text(
+              widget.initialItem == null
+                  ? 'Quantidade e valor'
+                  : 'Editar quantidade e valor',
+            ),
       content: SizedBox(
         width: 540,
         height: 420,
@@ -459,7 +674,25 @@ class _ItemPickerState extends State<ItemPicker> {
             ? Column(
                 children: [
                   TextField(
+                    key: const ValueKey('barcode-input'),
+                    controller: barcodeInput,
                     autofocus: true,
+                    onSubmitted: (_) => _readBarcodeInput(),
+                    decoration: const InputDecoration(
+                      labelText: 'Código da etiqueta',
+                      hintText: 'Leia, digite ou cole os 13 dígitos',
+                      prefixIcon: Icon(Icons.qr_code_scanner),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _readBarcodeInput,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Usar código'),
+                    ),
+                  ),
+                  TextField(
                     onChanged: (v) => setState(() => search = v),
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.search),
@@ -531,13 +764,15 @@ class _ItemPickerState extends State<ItemPicker> {
                       grams: grams,
                     ),
                     const SizedBox(height: 16),
-                    SumNumberField(
-                      controller: total,
-                      label: 'Valor total (R\$)',
-                      decimals: 2,
-                      format: money,
-                      helper: 'Total do produto. Você pode somar: 10,50+20+5.',
-                    ),
+                    if (widget.requiresPrice)
+                      SumNumberField(
+                        controller: total,
+                        label: 'Valor total (R\$)',
+                        decimals: 2,
+                        format: money,
+                        helper:
+                            'Total do produto. Você pode somar: 10,50+20+5.',
+                      ),
                     if (error.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
@@ -571,17 +806,21 @@ class _ItemPickerState extends State<ItemPicker> {
                 final q = p.unit == 'KG'
                     ? parseSumWeightParts(amount.text, grams.text)
                     : parseSumQuantity(amount.text, p.unit);
-                final cents = parseSumScaled(total.text, 2);
+                final cents = widget.requiresPrice
+                    ? parseSumScaled(total.text, 2)
+                    : 0;
                 Navigator.pop(
                   context,
-                  ConsumptionItem(
-                    id: widget.initialItem?.id ?? uuid.v4(),
-                    productId: p.id,
-                    code: p.code,
-                    description: p.description,
-                    unit: p.unit,
-                    amount: q,
-                    totalCents: cents,
+                  ItemPickerResult(
+                    item: ConsumptionItem(
+                      id: widget.initialItem?.id ?? uuid.v4(),
+                      productId: p.id,
+                      code: p.code,
+                      description: p.description,
+                      unit: p.unit,
+                      amount: q,
+                      totalCents: cents,
+                    ),
                   ),
                 );
               } catch (e) {

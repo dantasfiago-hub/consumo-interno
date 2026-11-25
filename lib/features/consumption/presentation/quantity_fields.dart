@@ -7,11 +7,13 @@ import 'sum_number_field.dart';
 class QuantityFields extends StatefulWidget {
   final String unit;
   final TextEditingController whole, grams;
+  final FocusNode? wholeFocusNode;
   const QuantityFields({
     super.key,
     required this.unit,
     required this.whole,
     required this.grams,
+    this.wholeFocusNode,
   });
 
   @override
@@ -84,8 +86,9 @@ class _QuantityFieldsState extends State<QuantityFields> {
     String label,
     String id,
     int maximum,
-    String suffix,
-  ) => ValueListenableBuilder<TextEditingValue>(
+    String suffix, {
+    FocusNode? focusNode,
+  }) => ValueListenableBuilder<TextEditingValue>(
     valueListenable: controller,
     builder: (context, value, _) {
       int? number;
@@ -141,7 +144,7 @@ class _QuantityFieldsState extends State<QuantityFields> {
               controller: controller,
               label: label,
               maximum: maximum,
-              focusNode: isGrams ? _gramsFocus : null,
+              focusNode: isGrams ? _gramsFocus : focusNode,
               onSubmitted: isGrams ? (_) => _normalizeGrams() : null,
               format: (n) {
                 if (!isGrams) return '$n $suffix';
@@ -179,6 +182,7 @@ class _QuantityFieldsState extends State<QuantityFields> {
           unit == 'KG' ? 'quantity-kg' : 'quantity-units',
           999999999,
           unit == 'KG' ? 'kg' : 'UN',
+          focusNode: widget.wholeFocusNode,
         ),
         if (unit == 'KG') ...[
           const SizedBox(height: 12),

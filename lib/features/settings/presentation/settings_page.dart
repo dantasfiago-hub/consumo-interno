@@ -9,6 +9,7 @@ import '../../../core/files/file_service.dart';
 import '../../../core/widgets/common.dart';
 import 'appearance_card.dart';
 import '../../exports/presentation/profile_card.dart';
+import '../../consumption/label/presentation/scale_label_format_settings.dart';
 
 class SettingsPage extends StatefulWidget {
   final AppState state;
@@ -67,6 +68,8 @@ class _SettingsPageState extends State<SettingsPage> {
               AppearanceCard(controller: widget.state.appearance),
               const SizedBox(height: 16),
               ExportProfileCard(state: widget.state),
+              const SizedBox(height: 16),
+              ScaleLabelFormatSettings(database: widget.state.db),
               const SizedBox(height: 16),
               Card(
                 child: Padding(

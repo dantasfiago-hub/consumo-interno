@@ -43,6 +43,10 @@ Para deixar a conexão incorporada, configure `config/connection.local.json` e u
 
 Os setores continuam acessando apenas lançamento/cancelamento e seus produtos. A exportação administrativa reúne registros sincronizados por setor, ignorando os já reservados/exportados. Cozinha/Padaria exportam código e quantidade; Horti Fruti mantém os quatro campos. Sincronize todas as máquinas antes de exportar.
 
+No lançamento, **Ler etiqueta** aceita etiquetas de balança. O padrão EAN-13 usa prefixo `2`, 6 dígitos de código interno e 5 dígitos de valor total em centavos; o dígito verificador é validado. Administradores ajustam o layout em Configurações, localmente em cada aparelho.
+
+A leitura pela câmera e o OCR local estão disponíveis no Android; permita o acesso à câmera quando solicitado. No Windows, digite, cole ou use um leitor USB tipo teclado no campo **Código da etiqueta** e informe a quantidade manualmente. A imagem da câmera não é armazenada nem enviada.
+
 Para trocar de setor/loja, use Sair ou trocar de setor e um novo código autorizado. A saída exige sincronização concluída e backup local. Os dados antigos permanecem na nuvem e na cópia local; os rascunhos ainda não lançados são descartados com confirmação. Não apague banco ou credenciais para contornar pendências.
 
 Não foi aplicado SQL à loja nem compilado um novo APK/EXE nesta entrega. As limitações de validação estão registradas no guia 1.7.

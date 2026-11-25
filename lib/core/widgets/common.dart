@@ -1,6 +1,23 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../domain/models.dart';
+
+String friendlyError(Object error) {
+  if (error is TimeoutException) {
+    return 'Tempo esgotado. Verifique a conexão e tente novamente.';
+  }
+  final text = error.toString();
+  for (final prefix in const [
+    'Bad state: ',
+    'FormatException: ',
+    'Exception: ',
+    'Invalid argument(s): ',
+  ]) {
+    if (text.startsWith(prefix)) return text.substring(prefix.length);
+  }
+  return text;
+}
 
 void message(BuildContext context, String text) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
